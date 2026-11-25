@@ -1,5 +1,5 @@
 // Cursable: guarda la app para que abra sin internet.
-const CACHE = 'cursable-v7';
+const CACHE = 'cursable-v8';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icons/favicon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
