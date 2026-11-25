@@ -1,0 +1,16 @@
+{
+  "name": "Cursable",
+  "short_name": "Cursable",
+  "description": "Cargá tu plan de estudios y mirá qué materias podés cursar, qué finales rendir primero y qué pasa si abandonás una.",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eef2f4",
+  "theme_color": "#0e8584",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
