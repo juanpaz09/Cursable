@@ -668,6 +668,7 @@ function renderAll(){ const y=window.scrollY; renderHeader(); renderProg(); rend
 // ED: borrador del plan que se está revisando/editando
 let ED=null, CARGA={paso:'inicio', estado:null, error:null, archivos:[]}, CTL=null;
 let SAMPLE=null; // función de Claude, o null si no está disponible acá
+const LECTOR_URL=''; // servidor propio que lee el PDF (versión pública)
 const nuevoId = () => 'p'+Date.now().toString(36);
 function planAEd(p){
   return {id:p.id, nombre:p.nombre, creditosReq:p.creditosReq||0, dudas:p.dudas||[], fuente:p.fuente||'',
@@ -764,6 +765,7 @@ async function leerConClaude(){
   if(!files.length){ CARGA.error='Elegí primero el PDF o las fotos del plan.'; renderCargar(); return; }
   CTL=new AbortController();
   CARGA.estado='Leyendo el archivo…'; CARGA.error=null; renderCargar();
+  if(!SAMPLE && LECTOR_URL) return leerConServidor(nombre, files);
   try{
     const lim=await SAMPLE.limits().catch(()=>null);
     const maxImgs=lim?.images?.maxCount||0;
@@ -793,6 +795,34 @@ async function leerConClaude(){
   CTL=null; renderCargar(); window.scrollTo(0,0);
 }
 
+// Versión pública: el PDF va a nuestro servidor, que se lo pasa a Claude
+const aB64 = f => new Promise((ok,ko)=>{ const r=new FileReader(); r.onload=()=>ok(String(r.result).split(',')[1]); r.onerror=ko; r.readAsDataURL(f); });
+async function leerConServidor(nombre, files){
+  try{
+    const pdf=files.find(f=>f.type==='application/pdf'||/\.pdf$/i.test(f.name));
+    const imgs=files.filter(f=>f.type.startsWith('image/')).slice(0,10);
+    if(files.reduce((a,f)=>a+f.size,0)>8*1024*1024) throw {code:'muy_grande'};
+    const body={nombre, pdf:pdf?await aB64(pdf):undefined, imagenes:await Promise.all(imgs.map(async f=>({media_type:f.type,data:await aB64(f)})))};
+    CARGA.estado='Claude está leyendo tu plan… puede tardar uno o dos minutos.'; renderCargar();
+    const r=await fetch(LECTOR_URL.replace(/\/$/,'')+'/leer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:CTL.signal});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok) throw {code:j.error||'error'};
+    if(!Array.isArray(j.plan?.materias)||!j.plan.materias.length) throw {code:'sin_materias', dudas:j.plan?.dudas};
+    ED=jsonAEd(j.plan, nombre); CARGA.paso='revisar'; CARGA.estado=null;
+  }catch(e){
+    CARGA.estado=null;
+    const c=e?.code||(e?.name==='AbortError'?'cancelled':'');
+    CARGA.error = c==='cancelled'?null
+      : c==='muchos_pedidos'?'Probaste muchas veces seguidas. Esperá un minuto y volvé a intentar.'
+      : c==='muy_grande'?'El archivo es muy pesado (máximo 8 MB). Subí solo las páginas de las correlativas.'
+      : c==='ocupado'?'El lector está con mucha demanda. Probá en unos minutos.'
+      : c==='sin_materias'?('No encontré un plan en ese archivo.'+(e.dudas?.length?' '+e.dudas.join(' '):''))
+      : c==='archivo_no_valido'?'No pude abrir ese archivo. Probá con otro PDF o con fotos.'
+      : 'No se pudo leer el plan. Revisá tu conexión y probá de nuevo, o cargalo a mano.';
+  }
+  CTL=null; renderCargar(); window.scrollTo(0,0);
+}
+
 function abrirCargar(modo){
   OPEN=null; renderSheet();
   if(modo==='editar'){ ED=planAEd(PLAN); CARGA={paso:'revisar',estado:null,error:null,archivos:[]}; }
@@ -817,7 +847,7 @@ function edRow(m,i){
 function renderCargar(){
   const el=$('#panel-cargar');
   if(CARGA.paso==='inicio'){
-    const tieneIA=!!SAMPLE;
+    const tieneIA=!!SAMPLE||!!LECTOR_URL;
     el.innerHTML=`
       <div class="sec-head" style="justify-content:space-between"><h2>Cargar una carrera</h2><button type="button" class="btn" id="c-cancel">Volver</button></div>
       <label class="field" for="c-nombre">¿Qué carrera es?<input id="c-nombre" class="inp" placeholder="Ej: Ingeniería Civil · Plan 2023 · UTN FRC" value="${esc($('#c-nombre')?.value||'')}"></label>
