@@ -2,14 +2,17 @@
 // 1) /leer: recibe el PDF (o fotos) de un régimen de correlativas y devuelve el plan como JSON,
 //    leído por Claude. La clave de API vive solo acá, como secreto del Worker.
 // 2) /planes: banco de planes compartidos por la gente (no usa Claude ni gasta saldo).
+// 3) /sync: código personal para llevar tu avance a otro celu, sin cuentas.
 import Anthropic from "@anthropic-ai/sdk";
 import { banco } from "./banco";
+import { sync } from "./sync";
 
 export interface Env {
   ANTHROPIC_API_KEY: string;
   ALLOWED_ORIGINS: string; // separados por coma, ej: "https://juanpaz09.github.io"
   LIMITER: RateLimit; // límite de lecturas con Claude por IP (wrangler.toml)
-  LIMITER_BANCO: RateLimit; // límite para compartir y reportar planes
+  LIMITER_BANCO: RateLimit; // límite para compartir y reportar planes, y para los códigos
+  LIMITER_SYNC: RateLimit; // límite para guardar el avance con el código
   PLANES: KVNamespace; // banco de planes compartidos
 }
 
@@ -70,7 +73,7 @@ function cors(origin: string | null, env: Env): Record<string, string> {
   const ok = origin && allowed.includes(origin);
   return {
     "Access-Control-Allow-Origin": ok ? origin : allowed[0] ?? "",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     "Vary": "Origin",
   };
@@ -88,8 +91,9 @@ export default {
 
     // Solo desde la app (no es seguridad fuerte, pero frena el uso casual desde otros sitios)
     const allowed = env.ALLOWED_ORIGINS.split(",").map((s) => s.trim());
-    if (req.method === "POST" && (!origin || !allowed.includes(origin))) return json({ error: "origen_no_permitido" }, 403, h);
+    if ((req.method === "POST" || req.method === "PUT") && (!origin || !allowed.includes(origin))) return json({ error: "origen_no_permitido" }, 403, h);
 
+    if (path === "/sync" || path.startsWith("/sync/")) return sync(req, env, path, ip, h);
     if (path === "/planes" || path.startsWith("/planes/")) return banco(req, env, path, ip, h);
     if (req.method !== "POST" || path !== "/leer") return json({ error: "no_encontrado" }, 404, h);
 

@@ -214,6 +214,10 @@ body:not(.bienvenida) #panel-bienvenida,body.cargando #panel-bienvenida{display:
 .feats div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 6px;display:grid;gap:4px;justify-items:center}
 .feats b{font-size:1.3rem;color:var(--accent)}
 .hola{font-size:.85rem;color:var(--muted)}
+.syncbox{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:8px;color:var(--fg);font-size:.9rem}
+.syncbox .cod{font-family:var(--f-mono);font-size:1.35rem;font-weight:700;letter-spacing:.04em;color:var(--accent);word-break:break-all}
+.syncbox .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.syncbox .inp{flex:1;min-width:10rem;text-transform:uppercase}
 .big-opt{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;align-items:center;text-align:left;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);width:100%}
 .big-opt .ic{grid-row:span 2;width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-size:1.2rem;font-weight:700}
 .big-opt b{font-size:1rem}
@@ -288,6 +292,7 @@ body:not(.bienvenida) #panel-bienvenida,body.cargando #panel-bienvenida{display:
   <section class="panel main-ui-p" id="panel-fin" hidden></section>
 
   <footer class="main-ui">
+    <div id="sync-box"></div>
     <details>
       <summary>Respaldo de tus datos</summary>
       <p>Lo que marcás se guarda en este navegador. Para pasarlo a otro dispositivo, copiá acá y restaurá allá.</p>
@@ -384,7 +389,7 @@ const PLAN_IND = {
 
 // ---------- Estado guardado ----------
 const KEY='estado-academico-v2', OLDKEY='estado-academico-industrial-2023-v1';
-const DEF = () => ({planId:'ind2023', planes:{}, prog:{}, cfg:{aviso:60, horas:24}, perfil:{nombre:'',uni:'',ciudad:'',pais:'Argentina'}, inicio:false});
+const DEF = () => ({planId:'ind2023', planes:{}, prog:{}, cfg:{aviso:60, horas:24}, perfil:{nombre:'',uni:'',ciudad:'',pais:'Argentina'}, inicio:false, sync:{codigo:'',t:0}, mod:0});
 let S = DEF();
 // datos de antes de la bienvenida: si ya marcó materias o cargó carreras, no se la mostramos
 function yaUsada(x){ return Object.keys(x.planes||{}).length>0 || Object.values(x.prog||{}).some(g=>Object.keys(g?.m||{}).length>0); }
@@ -394,7 +399,8 @@ try{
   else { const old=localStorage.getItem(OLDKEY); if(old){ const p=JSON.parse(old); S.prog.ind2023={m:p.m||{}, sel:p.sel||[]}; S.cfg=Object.assign(S.cfg,{aviso:p.cfg?.aviso||60, horas:p.cfg?.horas||24}); S.inicio=true; } }
 }catch(e){}
 S.cfg.proyectar=false; // solo cuenta lo que ya regularizaste de verdad
-function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+function guardarLocal(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+function save(){ S.mod=Date.now(); guardarLocal(); programarSync(); }
 const planes = () => [PLAN_IND, ...Object.values(S.planes)];
 const planById = id => id==='ind2023' ? PLAN_IND : S.planes[id];
 const P = () => (S.prog[S.planId] ||= {m:{}, sel:[]});
@@ -697,7 +703,7 @@ function renderSheet(){
 function openSheet(id){ OPEN=id; renderSheet(); $('#sheet-close')?.focus({preventScroll:true}); }
 function closeSheet(){ const id=OPEN; OPEN=null; renderSheet(); (id==='@planes'?$('#b-plan'):document.querySelector(`[data-open="${CSS.escape(id||'')}"]`))?.focus({preventScroll:true}); }
 
-function renderAll(){ const y=window.scrollY; renderHeader(); renderProg(); renderAlerts(); renderPlan(); renderProx(); renderArmar(); renderYsi(); renderFin(); window.scrollTo(0,y); }
+function renderAll(){ const y=window.scrollY; renderHeader(); renderSync(); renderProg(); renderAlerts(); renderPlan(); renderProx(); renderArmar(); renderYsi(); renderFin(); window.scrollTo(0,y); }
 
 // ---------- Cargar una carrera ----------
 // ED: borrador del plan que se está revisando/editando
@@ -1002,7 +1008,9 @@ function renderBienvenida(){
     <div id="w-err"></div>
     <button type="button" class="btn primary" id="w-seguir">Buscar mi carrera</button>
     <p class="hint" style="text-align:center">Tus datos y tu avance quedan solo en este celu.</p>
-    <details class="sec"><summary>¿Ya usabas Cursable en otro lado? Traé tu respaldo</summary>
+    ${LECTOR_URL?`<details class="sec" open><summary>¿Ya tenés tu código? Entrá con él</summary>
+      <div class="syncbox" style="border:0;padding:0;background:none"><div class="row"><input id="w-cod" class="inp" placeholder="PUMA-ROBLE-1234" autocomplete="off"><button type="button" class="btn" id="w-entrar">Entrar</button></div><span id="w-cmsg" class="muted small"></span></div></details>`:''}
+    <details class="sec"><summary>¿Tenés un respaldo copiado? Pegalo acá</summary>
       <textarea id="w-backup" placeholder="Pegá acá el respaldo que copiaste" aria-label="Respaldo"></textarea>
       <button type="button" class="btn" id="w-restore">Restaurar</button><span id="w-msg" class="muted small"></span></details>`;
 }
@@ -1013,13 +1021,82 @@ function seguirBienvenida(){
   save(); abrirCargar('nuevo'); CARGA.q=[S.perfil.uni,S.perfil.ciudad].filter(Boolean).join(' '); renderCargar();
 }
 function aplicarRespaldo(p){
-  if(p&&p.prog){ S=Object.assign(DEF(),p); S.cfg=Object.assign(DEF().cfg,p.cfg||{}); S.perfil=Object.assign(DEF().perfil,p.perfil||{}); }
+  const sy=S.sync;
+  if(p&&p.prog){ S=Object.assign(DEF(),p); S.cfg=Object.assign(DEF().cfg,p.cfg||{}); S.perfil=Object.assign(DEF().perfil,p.perfil||{}); S.sync=sy; }
   else if(p&&typeof p.m==='object'){ S.prog.ind2023={m:p.m,sel:p.sel||[]}; } // respaldo de la versión anterior
   else throw 0;
   S.cfg.proyectar=false; S.inicio=true; usarPlan(S.planId); save();
 }
 // Desde la bienvenida, la búsqueda vuelve con lo que puso la persona
 function completarLugar(ed){ for(const k of ['uni','ciudad','pais']) if(!String(ed[k]||'').trim()) ed[k]=S.perfil[k]||''; return ed; }
+
+// --- Código personal: el avance se guarda en el servidor para abrirlo en otro celu
+let SYNC_T=null, SYNC_EST='';
+const limpiarCodigo = c => String(c||'').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim().replace(/[^A-Z0-9]+/g,'-').replace(/^-|-$/g,'');
+function programarSync(){
+  if(!LECTOR_URL||!S.sync?.codigo) return;
+  clearTimeout(SYNC_T); SYNC_EST='pendiente'; SYNC_T=setTimeout(()=>subirSync(), 15000);
+}
+async function subirSync(keepalive){
+  clearTimeout(SYNC_T); SYNC_T=null;
+  if(!LECTOR_URL||!S.sync?.codigo) return;
+  try{
+    const body=JSON.stringify({datos:S});
+    const r=await fetch(API()+'/sync/'+encodeURIComponent(S.sync.codigo),{method:'PUT',headers:{'Content-Type':'application/json'},body,keepalive:!!keepalive&&body.length<60000});
+    if(!r.ok) throw 0; const j=await r.json(); S.sync.t=j.t||Date.now(); SYNC_EST='ok'; guardarLocal();
+  }catch(_){ SYNC_EST='error'; }
+  renderSync();
+}
+async function traerCodigo(codigo){
+  const r=await fetch(API()+'/sync/'+encodeURIComponent(codigo),{cache:'no-store'});
+  if(r.status===404) throw {code:'no_existe'};
+  if(!r.ok) throw {code:'red'};
+  return r.json();
+}
+// Al abrir: si en otro celu se guardó algo más nuevo, lo traemos
+async function bajarSync(){
+  if(!LECTOR_URL||!S.sync?.codigo) return;
+  try{ const g=await traerCodigo(S.sync.codigo);
+    if((g?.datos?.mod||0)>(S.mod||0)){ const sy={codigo:S.sync.codigo,t:g.t}; const mod=g.datos.mod; aplicarRespaldo(g.datos); S.sync=sy; S.mod=mod; guardarLocal(); renderAll(); }
+    SYNC_EST='ok';
+  }catch(_){ SYNC_EST='error'; }
+  renderSync();
+}
+async function crearCodigo(){
+  SYNC_EST='creando'; renderSync();
+  try{ const r=await fetch(API()+'/sync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({datos:S})});
+    if(!r.ok) throw 0; const j=await r.json(); S.sync={codigo:j.codigo,t:j.t}; SYNC_EST='ok'; guardarLocal(); }
+  catch(_){ SYNC_EST='error-crear'; }
+  renderSync();
+}
+async function entrarConCodigo(txt, msgEl){
+  const codigo=limpiarCodigo(txt);
+  if(!/^[A-Z]+-[A-Z]+-\d{4}$/.test(codigo)){ msgEl.textContent='El código tiene esta forma: PUMA-ROBLE-1234.'; return false; }
+  msgEl.textContent='Buscando…';
+  try{ const g=await traerCodigo(codigo); aplicarRespaldo(g.datos); S.sync={codigo,t:g.t}; S.mod=g.datos.mod||Date.now(); guardarLocal(); SYNC_EST='ok'; renderAll(); return true; }
+  catch(e){ msgEl.textContent= e?.code==='no_existe'?'No encontré ese código. Fijate que esté bien escrito.':'No me pude conectar. Probá de nuevo.'; return false; }
+}
+function renderSync(){
+  const el=$('#sync-box'); if(!el) return;
+  if(!LECTOR_URL){ el.innerHTML=''; return; }
+  const c=S.sync?.codigo;
+  if(!c){ el.innerHTML=`<div class="syncbox">
+      <b>📱 ¿Cambiás de celu o la querés abrir en otro lado?</b>
+      <span class="muted small">Creá tu código personal. Con ese código abrís tu avance en cualquier dispositivo, sin cuenta ni contraseña.</span>
+      <button type="button" class="btn primary" id="s-crear" ${SYNC_EST==='creando'?'disabled':''}>${SYNC_EST==='creando'?'Creando…':'Crear mi código'}</button>
+      ${SYNC_EST==='error-crear'?`<span class="small" style="color:var(--bad)">No pude crear el código. Probá de nuevo.</span>`:''}
+      <details class="sec"><summary>Ya tengo un código</summary><div class="row"><input id="s-cod" class="inp" placeholder="PUMA-ROBLE-1234" autocomplete="off"><button type="button" class="btn" id="s-entrar">Entrar</button></div><span id="s-msg" class="muted small"></span>
+        <span class="muted small">Ojo: reemplaza lo que tengas en este celu por lo guardado en ese código.</span></details></div>`; return; }
+  const hora=S.sync.t?new Date(S.sync.t).toLocaleString('es-AR',{day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+  el.innerHTML=`<div class="syncbox">
+      <span class="muted small">Tu código personal</span>
+      <div class="row"><span class="cod">${esc(c)}</span><button type="button" class="btn" id="s-copiar">Copiar</button></div>
+      <span class="muted small">${SYNC_EST==='error'?'⚠ No se pudo guardar. Se reintenta cuando hagas otro cambio.':SYNC_EST==='pendiente'?'Guardando en unos segundos…':`✓ Se guarda solo${hora?` · último guardado ${hora}`:''}`}</span>
+      <span class="muted small">Anotalo: en otro celu lo ponés al empezar y aparece todo. No se lo pases a nadie que no quieras que vea tu avance.</span>
+      <details class="sec"><summary>Dejar de usar este código acá</summary><button type="button" class="btn" id="s-salir">Desvincular este celu</button><span class="muted small">Tu avance sigue en este celu y en el código, pero deja de guardarse.</span></details>
+    </div>`;
+}
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden'&&SYNC_T) subirSync(true); });
 
 function abrirCargar(modo){
   OPEN=null; renderSheet();
@@ -1119,6 +1196,11 @@ document.addEventListener('click',e=>{
   if(t.id==='b-delplan'){ if(t.dataset.armed){ delete S.planes[S.planId]; delete S.prog[S.planId]; usarPlan('ind2023'); save(); OPEN=null; renderSheet(); renderAll(); } else { t.dataset.armed='1'; t.textContent='Tocá de nuevo para borrar'; } return; }
   // bienvenida
   if(t.id==='w-seguir'){ seguirBienvenida(); return; }
+  if(t.id==='w-entrar'){ entrarConCodigo($('#w-cod').value,$('#w-cmsg')); return; }
+  if(t.id==='s-crear'){ crearCodigo(); return; }
+  if(t.id==='s-entrar'){ entrarConCodigo($('#s-cod').value,$('#s-msg')); return; }
+  if(t.id==='s-salir'){ S.sync={codigo:'',t:0}; SYNC_EST=''; clearTimeout(SYNC_T); guardarLocal(); renderSync(); return; }
+  if(t.id==='s-copiar'){ try{ navigator.clipboard.writeText(S.sync.codigo).then(()=>{ t.textContent='Copiado ✓'; }); }catch(_){} return; }
   if(t.id==='w-restore'){ try{ aplicarRespaldo(JSON.parse($('#w-backup').value)); renderAll(); }catch(_){ $('#w-msg').textContent=' Ese texto no es un respaldo válido.'; } return; }
   // pantalla de carga
   if(t.id==='c-cancel'){ cerrarCargar(); return; }
@@ -1159,7 +1241,7 @@ document.addEventListener('click',e=>{
     for(const p of ['plan','prox','armar','ysi','fin']) $('#panel-'+p).hidden = p!==tab.dataset.tab;
     window.scrollTo(0,0); try{localStorage.setItem(KEY+'-tab',tab.dataset.tab)}catch(_){} }
 });
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&OPEN) closeSheet(); if(e.key==='Enter'&&e.target.closest?.('#panel-bienvenida')&&e.target.tagName==='INPUT') seguirBienvenida(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&OPEN) closeSheet(); if(e.key==='Enter'&&e.target.id==='w-cod') entrarConCodigo(e.target.value,$('#w-cmsg')); else if(e.key==='Enter'&&e.target.closest?.('#panel-bienvenida')&&e.target.tagName==='INPUT') seguirBienvenida(); });
 document.addEventListener('input',e=>{
   const t=e.target;
   if(t.id==='c-buscar'){ CARGA.q=t.value; renderRes(); return; }
@@ -1201,6 +1283,7 @@ $('#b-reset').addEventListener('click',e=>{
 usarPlan(S.planId);
 renderAll();
 try{ const t=localStorage.getItem(KEY+'-tab'); if(t){ document.querySelector(`[data-tab="${t}"]`)?.click(); } }catch(_){}
+bajarSync();
 // Claude disponible solo dentro de un visor de Claude
 (async()=>{ try{ SAMPLE = window.claude ? await window.claude.use('sample') : null; }catch(_){ SAMPLE=null; } if(document.body.classList.contains('cargando')&&CARGA.paso==='inicio') renderCargar(); })();
 </script>

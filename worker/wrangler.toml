@@ -21,6 +21,12 @@ name = "LIMITER_BANCO"
 namespace_id = "1002"
 simple = { limit = 10, period = 60 }
 
-# Banco de planes. Cloudflare crea el espacio solo la primera vez que publica (sin id).
+# Hasta 6 guardados del avance por minuto por persona (código personal).
+[[ratelimits]]
+name = "LIMITER_SYNC"
+namespace_id = "1003"
+simple = { limit = 6, period = 60 }
+
+# Banco de planes y códigos personales. Cloudflare crea el espacio solo la primera vez que publica (sin id).
 [[kv_namespaces]]
 binding = "PLANES"

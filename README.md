@@ -15,7 +15,7 @@ Viene con Ingeniería Industrial Plan 2023 (UTN FRC). Para cargar otra carrera:
 - **Usar tu propia IA:** la app te da un pedido para pegar en ChatGPT, Gemini o Claude junto con el PDF, y pegás la respuesta. No gasta nada del servidor.
 - **A mano** o **pegando un plan** que alguien te pasó.
 
-Tu avance (notas, materias marcadas) se guarda solo en tu dispositivo. Al banco va únicamente el plan, si elegís compartirlo.
+Tu avance se guarda en tu dispositivo. Si creás tu **código personal** (abajo de todo en la app), también se guarda en el servidor con ese código, y en otro celu entrás poniéndolo, sin cuenta ni contraseña. Al banco va únicamente el plan, si elegís compartirlo.
 
 ## Instalarla en el celu
 
@@ -33,6 +33,7 @@ Un solo `index.html` sin dependencias de compilación, más `manifest.webmanifes
 Un servidor chico en Cloudflare Workers hace dos cosas:
 
 - `/leer`: recibe el PDF y se lo pasa a Claude. La clave de API de Anthropic vive solo ahí, como secreto.
+- `/sync`: el código personal (por ejemplo `PUMA-ROBLE-1234`) para llevar tu avance a otro dispositivo. Guarda solo cuando hay cambios, como mucho cada 15 segundos.
 - `/planes`: el banco de planes compartidos, guardado en Cloudflare KV (Cloudflare lo crea solo al publicar). No usa Claude: funciona aunque no cargues la clave.
 
 1. **Clave de Claude:** en [console.anthropic.com](https://console.anthropic.com) creá una cuenta, cargá crédito, poné un límite de gasto mensual y creá una API key.
@@ -41,3 +42,5 @@ Un servidor chico en Cloudflare Workers hace dos cosas:
 4. Copiá la dirección del Worker (`https://cursable.<tu-subdominio>.workers.dev`) y ponela en `LECTOR_URL` dentro de `index.html`.
 
 Protecciones: solo acepta envíos desde `ALLOWED_ORIGINS` (en `wrangler.toml`), hasta 3 lecturas por minuto por IP y archivos de hasta 12 MB. En el banco: hasta 10 envíos por minuto por IP, se valida que cada correlativa exista, el mismo plan no se duplica, y un plan con avisos de 3 personas distintas se oculta (queda guardado como `oculto:<id>` para revisarlo).
+
+Límites del plan gratis de Cloudflare: KV permite unas 1.000 escrituras por día. Cada guardado del código personal y cada plan compartido es una escritura. Si Cursable crece y se queda corto, el plan Workers Paid (USD 5 por mes) lo lleva a 1 millón por mes.
