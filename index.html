@@ -119,9 +119,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .tabs svg{width:20px;height:20px;flex:none}
 .tabs .count{font-family:var(--f-mono);font-size:.7rem;background:var(--accent);color:var(--surface);border-radius:9px;padding:0 6px}
 @media (max-width:640px){
-  .tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);border-bottom:0;display:grid;grid-template-columns:repeat(5,1fr);gap:0;
+  .tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);border-bottom:0;display:grid;grid-template-columns:repeat(6,1fr);gap:0;
     padding:0 env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
-  .tabs button{flex-direction:column;gap:2px;border-bottom:0;border-top:3px solid transparent;padding:7px 2px 9px;font-size:.7rem}
+  .tabs button{flex-direction:column;gap:2px;border-bottom:0;border-top:3px solid transparent;padding:7px 0 9px;font-size:.66rem;min-width:0}
   .tabs button[aria-selected="true"]{border-top-color:var(--accent);color:var(--accent)}
   .tabs .count{position:absolute;top:3px;left:calc(50% + 6px);font-size:.62rem;padding:0 5px}
   .tiles{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -214,6 +214,35 @@ body:not(.bienvenida) #panel-bienvenida,body.cargando #panel-bienvenida{display:
 .feats div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 6px;display:grid;gap:4px;justify-items:center}
 .feats b{font-size:1.3rem;color:var(--accent)}
 .hola{font-size:.85rem;color:var(--muted)}
+/* Resumen */
+body.tab-res #prog,body.tab-res #alerts{display:none!important}
+.res-wrap{display:grid;gap:18px;padding-top:4px}
+.res-hi{display:grid;gap:2px}
+.res-hi .muted{font-size:.9rem}
+.res-hi h2{font-size:1.5rem;margin:0;letter-spacing:-.01em}
+.ring{position:relative;width:min(240px,70vw);aspect-ratio:1;justify-self:center}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:11}
+.ring .c{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.ring .c b{font-family:var(--f-disp,inherit);font-size:3.6rem;line-height:1;letter-spacing:-.03em}
+.ring .c b small{font-size:1.4rem;font-weight:600}
+.ring .c span{color:var(--muted);font-size:.85rem;margin-top:4px}
+.res-leg{display:flex;justify-content:center;flex-wrap:wrap;gap:6px 16px;font-size:.82rem;color:var(--muted)}
+.res-leg b{color:var(--fg);font-size:1rem}
+.res-leg i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;display:grid;gap:2px;text-align:left;color:var(--fg)}
+.stat b{font-family:var(--f-disp,inherit);font-size:2.4rem;line-height:1;letter-spacing:-.02em}
+.stat span{color:var(--muted);font-size:.85rem}
+.stat.ok b{color:var(--c-aprobada)} .stat.reg b{color:var(--c-regular)} .stat.cur b{color:var(--c-cursando)}
+.foco{border-radius:18px;padding:16px 18px;display:grid;gap:4px;text-align:left;width:100%;border:0;background:var(--accent-soft);color:var(--fg)}
+.foco.warn{background:var(--t-media)} .foco.bad{background:var(--bad-soft)}
+.foco .lbl{color:inherit;opacity:.7}
+.foco b{font-size:1.1rem}
+.cred{display:grid;gap:6px;font-size:.85rem;color:var(--muted)}
+.cred .meter{height:8px}
+.ed-row.foco-ed{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.link{background:none;border:0;padding:0;color:var(--accent);font-weight:600;font-size:.85rem;justify-self:start;cursor:pointer}
 .syncbox{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:8px;color:var(--fg);font-size:.9rem}
 .syncbox .cod{font-family:var(--f-mono);font-size:1.35rem;font-weight:700;letter-spacing:.04em;color:var(--accent);word-break:break-all}
 .syncbox .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
@@ -278,14 +307,16 @@ body:not(.bienvenida) #panel-bienvenida,body.cargando #panel-bienvenida{display:
   <section class="alerts main-ui" id="alerts"></section>
 
   <nav class="tabs main-ui" role="tablist">
-    <button role="tab" aria-selected="true" data-tab="plan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Mapa</button>
+    <button role="tab" aria-selected="true" data-tab="res"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5A8.5 8.5 0 0 1 20.5 12H12z" fill="currentColor" stroke="none"/></svg>Resumen</button>
+    <button role="tab" aria-selected="false" data-tab="plan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Mapa</button>
     <button role="tab" aria-selected="false" data-tab="prox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5L20 7"/></svg>Cursar<span class="count" id="c-prox"></span></button>
     <button role="tab" aria-selected="false" data-tab="armar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Armar</button>
     <button role="tab" aria-selected="false" data-tab="ysi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h10v10M17 7L7 17"/></svg>¿Y si?</button>
     <button role="tab" aria-selected="false" data-tab="fin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4h6M10 4v5l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V4"/></svg>Finales<span class="count" id="c-fin"></span></button>
   </nav>
 
-  <section class="panel main-ui-p" id="panel-plan"></section>
+  <section class="panel main-ui-p" id="panel-res"></section>
+  <section class="panel main-ui-p" id="panel-plan" hidden></section>
   <section class="panel main-ui-p" id="panel-prox" hidden></section>
   <section class="panel main-ui-p" id="panel-armar" hidden></section>
   <section class="panel main-ui-p" id="panel-ysi" hidden></section>
@@ -661,6 +692,51 @@ function renderFin(){
         <span class="abre"><b>${x.destraba.length}</b><small>abre ya</small></span></button>`;}).join('')}`;
 }
 
+// ---------- Resumen ----------
+function renderResumen(){
+  const ob=oblig(), N=ob.length||1;
+  const c={aprobada:0,media:0,regular:0,cursando:0,falta:0};
+  ob.forEach(m=>c[st(m.id)]++);
+  const pct=Math.round(c.aprobada/N*100);
+  // anillo: aprobadas, media, regulares y cursando, en ese orden
+  const R=44, L=2*Math.PI*R; let off=0;
+  const segs=['aprobada','media','regular','cursando'].map(k=>{ const len=c[k]/N*L; const sg=len?`<circle cx="50" cy="50" r="${R}" stroke="var(--c-${k})" stroke-dasharray="${len} ${L-len}" stroke-dashoffset="${-off}"/>`:''; off+=len; return sg; }).join('');
+  const {pod}=analisisProximo(), F=analisisFinales();
+  const curs=MATERIAS.filter(m=>st(m.id)==='cursando');
+  const hsC=curs.reduce((a,m)=>a+(+m.hs||0),0);
+  const cred=MATERIAS.filter(m=>m.tipo==='electiva'&&esApr(m.id)).reduce((a,m)=>a+(+m.creditos||0),0);
+  // lo más importante ahora
+  let foco=null;
+  const medias=MATERIAS.filter(m=>st(m.id)==='media').map(m=>({m,u:urgenciaMedia(m.id)}));
+  const venc=medias.find(x=>x.u.nivel==='vencida'), pronto=medias.filter(x=>x.u.nivel==='pronto').sort((a,b)=>a.u.d-b.u.d)[0];
+  if(venc) foco={c:'bad',l:'Atención',t:`Se venció la media promo de ${venc.m.nombre}`,s:'Fijate si todavía podés rendir solo el teórico.',open:venc.m.id};
+  else if(pronto) foco={c:'warn',l:`Faltan ${pronto.u.d} ${pl(pronto.u.d,'día','días')}`,t:`Rendí ${pronto.m.nombre} antes de que venza la media promo`,s:'',open:pronto.m.id};
+  else if(F.length&&F[0].destraba.length) foco={c:'',l:'Tu próximo final',t:F[0].m.nombre,s:`Te abre ${F[0].destraba.length} ${pl(F[0].destraba.length,'materia','materias')} para cursar.`,open:F[0].m.id};
+  else if(F.length) foco={c:'',l:'Tu próximo final',t:F[0].m.nombre,s:`Tenés ${F.length} ${pl(F.length,'final pendiente','finales pendientes')}.`,go:'fin'};
+  else if(pod.length) foco={c:'',l:'Ya podés anotarte',t:`${pod.length} ${pl(pod.length,'materia','materias')} para cursar`,s:'',go:'prox'};
+  const nombre=S.perfil?.nombre;
+  $('#panel-res').innerHTML=`<div class="res-wrap">
+    <div class="res-hi"><h2>${nombre?`Hola, ${esc(nombre)}`:'Tu situación'}</h2><span class="muted">Así venís en la carrera</span></div>
+    <div class="ring" role="img" aria-label="${pct}% de la carrera aprobada">
+      <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="${R}" stroke="var(--line)"/>${segs}</svg>
+      <div class="c"><b>${pct}<small>%</small></b><span>aprobado</span></div>
+    </div>
+    <div class="res-leg">
+      ${[['aprobada','aprobadas'],['media','media promo'],['regular','regulares'],['cursando','cursando']].filter(([k])=>c[k]).map(([k,t])=>`<span><i style="background:var(--c-${k})"></i><b>${c[k]}</b> ${t}</span>`).join('')}
+      <span><i style="background:var(--line)"></i><b>${c.falta}</b> faltan</span>
+    </div>
+    ${foco?`<button type="button" class="foco ${foco.c}" ${foco.open?`data-open="${esc(foco.open)}"`:`data-go="${foco.go}"`}><span class="lbl">${esc(foco.l)}</span><b>${esc(foco.t)}</b>${foco.s?`<span class="small">${esc(foco.s)}</span>`:''}</button>`:''}
+    <div class="stats">
+      <button type="button" class="stat ok" data-go="prox"><b>${pod.length}</b><span>podés cursar</span></button>
+      <button type="button" class="stat reg" data-go="fin"><b>${F.length}</b><span>${pl(F.length,'final pendiente','finales pendientes')}</span></button>
+      <button type="button" class="stat cur" data-go="ysi"><b>${curs.length}</b><span>cursando${hsC?` · ${hsC} h/sem`:''}</span></button>
+      <button type="button" class="stat" data-go="plan"><b>${c.falta}</b><span>te ${pl(c.falta,'falta','faltan')} cursar</span></button>
+    </div>
+    ${CREDITOS_REQ?`<div class="cred"><span>Electivas: <b style="color:var(--fg)">${cred} de ${CREDITOS_REQ}</b> créditos</span><div class="meter"><i style="width:${Math.min(cred/CREDITOS_REQ,1)*100}%"></i></div></div>`:''}
+    ${!Object.keys(P().m).length?`<div class="empty">Todavía no marcaste materias. Andá al <button type="button" class="link" data-go="plan">Mapa</button> y tocá cada una para decir cómo la tenés.</div>`:''}
+  </div>`;
+}
+
 // ---------- Ficha (materia o carreras) ----------
 let OPEN=null;
 function renderSheet(){
@@ -672,7 +748,7 @@ function renderSheet(){
       <div class="planlist">${planes().map(p=>`<button type="button" class="big-opt ${p.id===S.planId?'cur':''}" data-plan="${esc(p.id)}"><span class="ic">${p.id===S.planId?'✓':'🎓'}</span><b>${esc(p.nombre)}</b><span class="muted small">${p.banco?'Del banco · ':''}${p.materias.length} materias${S.prog[p.id]?` · ${Object.values(S.prog[p.id].m).filter(x=>x.e==='aprobada').length} aprobadas`:''}</span></button>`).join('')}</div>
       <button type="button" class="btn primary" data-cargar="nuevo">+ Cargar otra carrera</button>
       <div class="controls">
-        ${PLAN.builtin?'':`<button type="button" class="btn" data-cargar="editar">Editar este plan</button>`}
+        <button type="button" class="btn" data-cargar="editar">✎ Editar este plan</button>
         <button type="button" class="btn" id="b-share">Copiar plan para compartir</button>
         ${PLAN.builtin?'':`<button type="button" class="btn" id="b-delplan">Borrar este plan</button>`}
       </div>
@@ -696,14 +772,15 @@ function renderSheet(){
         ${m.apr.length?`<div class="mini"><span style="border:0;background:none;font-family:var(--f-body)">Aprobadas</span>${miniReq(m.apr,esApr)}</div>`:''}</div>`:'<div class="muted small">No tiene correlativas.</div>'}
       ${dependen.length?`<div style="display:grid;gap:6px"><div class="lbl">Otras materias que la piden para cursar</div>
         ${[['reg','Regular','fin'],['apr','Aprobada','ok']].map(([k,t,c])=>{ const ds=dependen.filter(x=>x[k].includes(OPEN)); return ds.length?`<div class="mini"><span style="border:0;background:none;font-family:var(--f-body);min-width:5.5rem;text-align:left">${t} (${ds.length})</span>${ds.map(x=>`<span class="${c}" title="${esc(label(x.id))}">${esc(cod(x.id))}</span>`).join('')}</div>`:''; }).join('')}</div>`:''}
-      ${m.nota?`<div class="muted small">⚠ ${esc(m.nota)}</div>`:''}`;
+      ${m.nota?`<div class="muted small">⚠ ${esc(m.nota)}</div>`:''}
+      <button type="button" class="link" data-editar-m="${esc(OPEN)}">✎ Algo está mal en esta materia? Corregila</button>`;
   }
   sh.hidden=false; $('#backdrop').hidden=false;
 }
 function openSheet(id){ OPEN=id; renderSheet(); $('#sheet-close')?.focus({preventScroll:true}); }
 function closeSheet(){ const id=OPEN; OPEN=null; renderSheet(); (id==='@planes'?$('#b-plan'):document.querySelector(`[data-open="${CSS.escape(id||'')}"]`))?.focus({preventScroll:true}); }
 
-function renderAll(){ const y=window.scrollY; renderHeader(); renderSync(); renderProg(); renderAlerts(); renderPlan(); renderProx(); renderArmar(); renderYsi(); renderFin(); window.scrollTo(0,y); }
+function renderAll(){ const y=window.scrollY; renderHeader(); renderSync(); renderResumen(); renderProg(); renderAlerts(); renderPlan(); renderProx(); renderArmar(); renderYsi(); renderFin(); window.scrollTo(0,y); }
 
 // ---------- Cargar una carrera ----------
 // ED: borrador del plan que se está revisando/editando
@@ -715,7 +792,7 @@ const nuevoId = () => 'p'+Date.now().toString(36);
 function planAEd(p){
   return {id:p.id, nombre:p.nombre, creditosReq:p.creditosReq||0, dudas:p.dudas||[], fuente:p.fuente||'',
     uni:p.uni||'', ciudad:p.ciudad||'', pais:p.pais||'', banco:p.banco||'', compartir:!!LECTOR_URL&&!p.banco&&!p.builtin,
-    materias:p.materias.map(m=>({id:m.id, nombre:m.nombre, nivel:m.nivel||1, tipo:m.tipo||'anual', cuat:m.cuat||'', hs:m.hs||0, creditos:m.creditos||0, reg:m.reg.join(', '), apr:m.apr.join(', ')}))};
+    materias:p.materias.map(m=>({id:m.id, nombre:m.nombre, nivel:m.nivel||1, tipo:m.tipo||'anual', cuat:m.cuat||'', hs:m.hs||0, creditos:m.creditos||0, reg:m.reg.join(', '), apr:m.apr.join(', '), ...(m.nota?{nota:m.nota}:{})}))};
 }
 const splitCods = t => String(t||'').split(/[\s,;/+-]+/).map(x=>x.trim()).filter(Boolean);
 function validarEd(){
@@ -740,7 +817,7 @@ function edAPlan(){
   return {id:ED.id, nombre:ED.nombre.trim(), creditosReq:+ED.creditosReq||0, fuente:ED.fuente||'Plan cargado por vos.',
     uni:String(ED.uni||'').trim(), ciudad:String(ED.ciudad||'').trim(), pais:String(ED.pais||'').trim(), ...(ED.banco?{banco:ED.banco}:{}),
     materias:ED.materias.map(m=>({id:m.id.trim(), nombre:m.nombre.trim(), nivel:+m.nivel||1, tipo:m.tipo, cuat:m.tipo==='anual'?'':m.cuat, hs:+m.hs||0, creditos:m.tipo==='electiva'?(+m.creditos||0):0,
-      reg:splitCods(m.reg), apr:splitCods(m.apr)}))};
+      reg:splitCods(m.reg), apr:splitCods(m.apr), ...(m.nota?{nota:m.nota}:{})}))};
 }
 // Lo que devuelve Claude → borrador
 function jsonAEd(j, nombre){
@@ -1099,11 +1176,14 @@ function renderSync(){
 }
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden'&&SYNC_T) subirSync(true); });
 
-function abrirCargar(modo){
+function abrirCargar(modo, foco){
   OPEN=null; renderSheet();
-  if(modo==='editar'){ ED=planAEd(PLAN); ED.compartir=false; CARGA={paso:'revisar',estado:null,error:null,archivos:[],q:''}; }
+  if(modo==='editar'){ ED=planAEd(PLAN); ED.compartir=false; CARGA={paso:'revisar',estado:null,error:null,archivos:[],q:'',foco};
+    if(PLAN.builtin){ ED.id=nuevoId(); ED.deBase=PLAN.id; ED.nombre=PLAN.nombre+' (mi versión)'; ED.fuente=(PLAN.fuente||'')+' Con cambios tuyos.'; } }
   else { ED=null; CARGA={paso:'inicio',estado:null,error:null,archivos:[],q:'',pdf:false}; }
   document.body.classList.add('cargando'); renderCargar(); window.scrollTo(0,0);
+  if(foco){ const i=ED.materias.findIndex(m=>m.id===foco); const row=document.querySelector(`.ed-row[data-i="${i}"]`);
+    if(row){ row.classList.add('foco-ed'); row.scrollIntoView({block:'center'}); row.querySelector('[data-f="reg"]')?.focus({preventScroll:true}); } }
 }
 function cerrarCargar(){ CTL?.abort(); document.body.classList.remove('cargando'); ED=null; renderAll(); }
 
@@ -1157,7 +1237,8 @@ function renderCargar(){
   const bad=new Set(errs.filter(e=>e.i>=0).map(e=>e.i+':'+e.f));
   const anios={}; ED.materias.forEach(m=>{const k=m.tipo==='electiva'?'E':(+m.nivel||1); anios[k]=(anios[k]||0)+1;});
   el.innerHTML=`
-    <div class="sec-head" style="justify-content:space-between"><h2>Revisá el plan</h2><button type="button" class="btn" id="c-cancel">Cancelar</button></div>
+    ${ED.deBase?`<div class="status" style="display:block;font-weight:400">Vas a guardar <b>una copia tuya</b> de este plan con tus cambios. Tu avance se pasa a la copia.</div>`:''}
+    <div class="sec-head" style="justify-content:space-between"><h2>${CARGA.foco||ED.deBase||planById(ED.id)?'Editá el plan':'Revisá el plan'}</h2><button type="button" class="btn" id="c-cancel">Cancelar</button></div>
     <div class="total"><div class="total-row"><span><b>${ED.materias.length}</b> <span class="muted">materias</span></span>
       ${Object.entries(anios).sort().map(([k,n])=>`<span><b>${n}</b> <span class="muted">${k==='E'?'electivas':k+'.º año'}</span></span>`).join('')}</div>
       <button type="button" class="btn primary" id="c-guardar">Guardar y usar este plan</button></div>
@@ -1179,6 +1260,7 @@ function guardarEd(){
   const errs=validarEd();
   if(errs.length){ CARGA.errs=errs; renderCargar(); window.scrollTo(0,0); return; }
   const plan=edAPlan(), compartir=ED.compartir&&!!LECTOR_URL;
+  if(ED.deBase&&S.prog[ED.deBase]&&!S.prog[plan.id]){ S.prog[plan.id]=S.prog[ED.deBase]; delete S.prog[ED.deBase]; }
   S.planes[plan.id]=plan; S.inicio=true; usarPlan(plan.id); save(); CARGA.errs=null;
   if(compartir) compartirPlan(plan);
   cerrarCargar();
@@ -1234,12 +1316,15 @@ document.addEventListener('click',e=>{
   if(set&&OPEN){ const r=rec(OPEN); r.e=set.dataset.set; if(r.e==='falta'&&!r.vence&&!r.nota) delete P().m[OPEN]; SUG=null; save(); renderAll(); renderSheet();
     if(r.e==='media'&&!r.vence) $('#vence')?.focus(); return; }
   const op=t.closest('[data-open]'); if(op){ openSheet(op.dataset.open); return; }
+  const go=t.closest('[data-go]'); if(go){ document.querySelector(`[data-tab="${go.dataset.go}"]`)?.click(); return; }
+  const em=t.closest('[data-editar-m]'); if(em){ abrirCargar('editar', em.dataset.editarM); return; }
   const tg=t.closest('[data-toggle]'); if(tg){ const id=tg.dataset.toggle, sel=P().sel; P().sel=sel.includes(id)?sel.filter(x=>x!==id):[...sel,id]; save(); const y=window.scrollY; renderArmar(); window.scrollTo(0,y); return; }
   if(t.id==='b-sug'){ SUG=sugerir(analisisProximo().pod, S.cfg.horas); renderArmar(); return; }
   const u=t.closest('[data-usar]'); if(u&&SUG){ P().sel=[...SUG[+u.dataset.usar].sel]; save(); renderArmar(); return; }
   const tab=t.closest('[data-tab]');
   if(tab){ for(const x of document.querySelectorAll('[data-tab]')) x.setAttribute('aria-selected', x===tab);
-    for(const p of ['plan','prox','armar','ysi','fin']) $('#panel-'+p).hidden = p!==tab.dataset.tab;
+    for(const p of ['res','plan','prox','armar','ysi','fin']) $('#panel-'+p).hidden = p!==tab.dataset.tab;
+    document.body.classList.toggle('tab-res', tab.dataset.tab==='res');
     window.scrollTo(0,0); try{localStorage.setItem(KEY+'-tab',tab.dataset.tab)}catch(_){} }
 });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&OPEN) closeSheet(); if(e.key==='Enter'&&e.target.id==='w-cod') entrarConCodigo(e.target.value,$('#w-cmsg')); else if(e.key==='Enter'&&e.target.closest?.('#panel-bienvenida')&&e.target.tagName==='INPUT') seguirBienvenida(); });
@@ -1283,6 +1368,7 @@ $('#b-reset').addEventListener('click',e=>{
 
 usarPlan(S.planId);
 renderAll();
+document.body.classList.add('tab-res');
 try{ const t=localStorage.getItem(KEY+'-tab'); if(t){ document.querySelector(`[data-tab="${t}"]`)?.click(); } }catch(_){}
 bajarSync();
 if(LECTOR_URL) fetch(API()+'/estado').then(r=>r.ok?r.json():{}).then(j=>{ LECTOR_OK=!!j.lector; if(document.body.classList.contains('cargando')&&CARGA.paso==='inicio') renderCargar(); }).catch(()=>{});
