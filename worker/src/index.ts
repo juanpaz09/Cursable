@@ -93,6 +93,8 @@ export default {
     const allowed = env.ALLOWED_ORIGINS.split(",").map((s) => s.trim());
     if ((req.method === "POST" || req.method === "PUT") && (!origin || !allowed.includes(origin))) return json({ error: "origen_no_permitido" }, 403, h);
 
+    // La app pregunta si la lectura con Claude está activa (si no hay clave, no muestra "Subir el PDF")
+    if (req.method === "GET" && path === "/estado") return json({ lector: !!env.ANTHROPIC_API_KEY }, 200, { ...h, "Cache-Control": "public, max-age=300" });
     if (path === "/sync" || path.startsWith("/sync/")) return sync(req, env, path, ip, h);
     if (path === "/planes" || path.startsWith("/planes/")) return banco(req, env, path, ip, h);
     if (req.method !== "POST" || path !== "/leer") return json({ error: "no_encontrado" }, 404, h);

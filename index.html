@@ -709,7 +709,8 @@ function renderAll(){ const y=window.scrollY; renderHeader(); renderSync(); rend
 // ED: borrador del plan que se está revisando/editando
 let ED=null, CARGA={paso:'inicio', estado:null, error:null, archivos:[]}, CTL=null;
 let SAMPLE=null; // función de Claude, o null si no está disponible acá
-const LECTOR_URL='https://cursable.juan-paz1905.workers.dev'; // servidor propio que lee el PDF (versión pública)
+const LECTOR_URL='https://cursable.juan-paz1905.workers.dev';
+let LECTOR_OK=false; // el servidor tiene la clave de Claude cargada // servidor propio que lee el PDF (versión pública)
 const nuevoId = () => 'p'+Date.now().toString(36);
 function planAEd(p){
   return {id:p.id, nombre:p.nombre, creditosReq:p.creditosReq||0, dudas:p.dudas||[], fuente:p.fuente||'',
@@ -823,7 +824,7 @@ async function leerConClaude(){
   if(!files.length){ CARGA.error='Elegí primero el PDF o las fotos del plan.'; renderCargar(); return; }
   CTL=new AbortController();
   CARGA.estado='Leyendo el archivo…'; CARGA.error=null; renderCargar();
-  if(!SAMPLE && LECTOR_URL) return leerConServidor(nombre, files);
+  if(!SAMPLE && LECTOR_OK) return leerConServidor(nombre, files);
   try{
     const lim=await SAMPLE.limits().catch(()=>null);
     const maxImgs=lim?.images?.maxCount||0;
@@ -1124,7 +1125,7 @@ function renderCargar(){
   if(CARGA.paso==='ver'){ renderVer(el); return; }
   if(CARGA.paso==='ia'){ renderIA(el); return; }
   if(CARGA.paso==='inicio'){
-    const tieneIA=!!SAMPLE||!!LECTOR_URL;
+    const tieneIA=!!SAMPLE||LECTOR_OK;
     const pdfAbierto=CARGA.pdf||CARGA.archivos.length||CARGA.estado;
     el.innerHTML=`
       <div class="sec-head" style="justify-content:space-between"><h2>${S.inicio?'Cargar una carrera':`Hola${S.perfil.nombre?', '+esc(S.perfil.nombre):''}! Buscá tu carrera`}</h2><button type="button" class="btn" id="c-cancel">Volver</button></div>
@@ -1284,6 +1285,7 @@ usarPlan(S.planId);
 renderAll();
 try{ const t=localStorage.getItem(KEY+'-tab'); if(t){ document.querySelector(`[data-tab="${t}"]`)?.click(); } }catch(_){}
 bajarSync();
+if(LECTOR_URL) fetch(API()+'/estado').then(r=>r.ok?r.json():{}).then(j=>{ LECTOR_OK=!!j.lector; if(document.body.classList.contains('cargando')&&CARGA.paso==='inicio') renderCargar(); }).catch(()=>{});
 // Claude disponible solo dentro de un visor de Claude
 (async()=>{ try{ SAMPLE = window.claude ? await window.claude.use('sample') : null; }catch(_){ SAMPLE=null; } if(document.body.classList.contains('cargando')&&CARGA.paso==='inicio') renderCargar(); })();
 </script>
