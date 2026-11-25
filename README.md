@@ -38,6 +38,6 @@ Un servidor chico en Cloudflare Workers hace dos cosas:
 1. **Clave de Claude:** en [console.anthropic.com](https://console.anthropic.com) creá una cuenta, cargá crédito, poné un límite de gasto mensual y creá una API key.
 2. **Cloudflare:** en [dash.cloudflare.com](https://dash.cloudflare.com) → *Workers & Pages* → *Create* → *Import a repository* → elegí este repo y poné `worker` como *root directory*. Cada push a `main` lo vuelve a publicar.
 3. **Secreto:** en el Worker → *Settings* → *Variables and Secrets* → agregá `ANTHROPIC_API_KEY` como **Secret**.
-4. Copiá la dirección del Worker (`https://cursable-lector.<tu-subdominio>.workers.dev`) y ponela en `LECTOR_URL` dentro de `index.html`.
+4. Copiá la dirección del Worker (`https://cursable.<tu-subdominio>.workers.dev`) y ponela en `LECTOR_URL` dentro de `index.html`.
 
 Protecciones: solo acepta envíos desde `ALLOWED_ORIGINS` (en `wrangler.toml`), hasta 3 lecturas por minuto por IP y archivos de hasta 12 MB. En el banco: hasta 10 envíos por minuto por IP, se valida que cada correlativa exista, el mismo plan no se duplica, y un plan con avisos de 3 personas distintas se oculta (queda guardado como `oculto:<id>` para revisarlo).

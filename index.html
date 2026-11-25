@@ -688,7 +688,7 @@ function renderAll(){ const y=window.scrollY; renderHeader(); renderProg(); rend
 // ED: borrador del plan que se está revisando/editando
 let ED=null, CARGA={paso:'inicio', estado:null, error:null, archivos:[]}, CTL=null;
 let SAMPLE=null; // función de Claude, o null si no está disponible acá
-const LECTOR_URL=''; // servidor propio que lee el PDF (versión pública)
+const LECTOR_URL='https://cursable.juan-paz1905.workers.dev'; // servidor propio que lee el PDF (versión pública)
 const nuevoId = () => 'p'+Date.now().toString(36);
 function planAEd(p){
   return {id:p.id, nombre:p.nombre, creditosReq:p.creditosReq||0, dudas:p.dudas||[], fuente:p.fuente||'',
