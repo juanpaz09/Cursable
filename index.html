@@ -204,6 +204,16 @@ textarea{width:100%;min-height:80px;font-family:var(--f-mono);font-size:.75rem;b
 .planbtn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 body.cargando .main-ui,body.cargando .main-ui-p{display:none!important}
 body:not(.cargando) #panel-cargar{display:none!important}
+body.bienvenida .main-ui,body.bienvenida .main-ui-p,body.bienvenida #b-plan{display:none!important}
+body:not(.bienvenida) #panel-bienvenida,body.cargando #panel-bienvenida{display:none!important}
+.hero{display:grid;gap:10px;justify-items:center;text-align:center;padding:18px 0 6px}
+.hero svg{width:84px;height:84px;border-radius:20px;box-shadow:0 8px 22px rgba(0,0,0,.15)}
+.hero h2{font-size:1.6rem;margin:0}
+.hero p{margin:0;color:var(--muted);max-width:30rem}
+.feats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;text-align:center;font-size:.8rem;color:var(--muted)}
+.feats div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 6px;display:grid;gap:4px;justify-items:center}
+.feats b{font-size:1.3rem;color:var(--accent)}
+.hola{font-size:.85rem;color:var(--muted)}
 .big-opt{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;align-items:center;text-align:left;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);width:100%}
 .big-opt .ic{grid-row:span 2;width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-size:1.2rem;font-weight:700}
 .big-opt b{font-size:1rem}
@@ -257,6 +267,7 @@ body:not(.cargando) #panel-cargar{display:none!important}
     <button type="button" class="planbtn" id="b-plan" aria-label="Cambiar de carrera"><span id="plan-name"></span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg></button>
   </header>
 
+  <section class="panel" id="panel-bienvenida"></section>
   <section class="panel" id="panel-cargar"></section>
 
   <section class="prog main-ui" id="prog" aria-label="Avance de la carrera"></section>
@@ -373,12 +384,14 @@ const PLAN_IND = {
 
 // ---------- Estado guardado ----------
 const KEY='estado-academico-v2', OLDKEY='estado-academico-industrial-2023-v1';
-const DEF = () => ({planId:'ind2023', planes:{}, prog:{}, cfg:{aviso:60, horas:24}});
+const DEF = () => ({planId:'ind2023', planes:{}, prog:{}, cfg:{aviso:60, horas:24}, perfil:{nombre:'',uni:'',ciudad:'',pais:'Argentina'}, inicio:false});
 let S = DEF();
+// datos de antes de la bienvenida: si ya marcó materias o cargó carreras, no se la mostramos
+function yaUsada(x){ return Object.keys(x.planes||{}).length>0 || Object.values(x.prog||{}).some(g=>Object.keys(g?.m||{}).length>0); }
 try{
   const raw=localStorage.getItem(KEY);
-  if(raw){ const p=JSON.parse(raw); S=Object.assign(DEF(),p); S.cfg=Object.assign(DEF().cfg,p.cfg||{}); }
-  else { const old=localStorage.getItem(OLDKEY); if(old){ const p=JSON.parse(old); S.prog.ind2023={m:p.m||{}, sel:p.sel||[]}; S.cfg=Object.assign(S.cfg,{aviso:p.cfg?.aviso||60, horas:p.cfg?.horas||24}); } }
+  if(raw){ const p=JSON.parse(raw); S=Object.assign(DEF(),p); S.cfg=Object.assign(DEF().cfg,p.cfg||{}); S.perfil=Object.assign(DEF().perfil,p.perfil||{}); if(p.inicio===undefined) S.inicio=yaUsada(S); }
+  else { const old=localStorage.getItem(OLDKEY); if(old){ const p=JSON.parse(old); S.prog.ind2023={m:p.m||{}, sel:p.sel||[]}; S.cfg=Object.assign(S.cfg,{aviso:p.cfg?.aviso||60, horas:p.cfg?.horas||24}); S.inicio=true; } }
 }catch(e){}
 S.cfg.proyectar=false; // solo cuenta lo que ya regularizaste de verdad
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
@@ -493,6 +506,8 @@ const pl=(n,a,b)=>n===1?a:b;
 const tipoTxt = m => m.tipo==='electiva'?`Electiva${m.cuat?' · '+m.cuat:''}${m.creditos?` · ${m.creditos} créd.`:''}`:m.tipo==='cuatrimestral'?`${m.nivel||1}.º año · ${m.cuat||'cuatrim.'}`:`${m.nivel||1}.º año`;
 
 function renderHeader(){
+  document.body.classList.toggle('bienvenida', !S.inicio);
+  if(!S.inicio) renderBienvenida();
   $('#plan-name').textContent=PLAN.nombre;
   $('#plan-fuente').textContent=PLAN.fuente||'';
 }
@@ -816,7 +831,7 @@ async function leerConClaude(){
     CARGA.estado='Claude está leyendo tu plan… puede tardar uno o dos minutos.'; renderCargar();
     const j=await SAMPLE.json(PROMPT(nombre,texto,imgs.length>0), {signal:CTL.signal, images:imgs.length?imgs.slice(0,maxImgs):undefined});
     if(!Array.isArray(j?.materias)||!j.materias.length) throw {code:'sin_materias'};
-    ED=jsonAEd(j, nombre); CARGA.paso='revisar'; CARGA.estado=null;
+    ED=completarLugar(jsonAEd(j, nombre)); CARGA.paso='revisar'; CARGA.estado=null;
   }catch(e){
     CARGA.estado=null;
     const c=e?.code;
@@ -845,7 +860,7 @@ async function leerConServidor(nombre, files){
     const j=await r.json().catch(()=>({}));
     if(!r.ok) throw {code:j.error||'error'};
     if(!Array.isArray(j.plan?.materias)||!j.plan.materias.length) throw {code:'sin_materias', dudas:j.plan?.dudas};
-    ED=jsonAEd(j.plan, nombre); CARGA.paso='revisar'; CARGA.estado=null;
+    ED=completarLugar(jsonAEd(j.plan, nombre)); CARGA.paso='revisar'; CARGA.estado=null;
   }catch(e){
     CARGA.estado=null;
     const c=e?.code||(e?.name==='AbortError'?'cancelled':'');
@@ -916,6 +931,7 @@ function planDelBanco(v){
 }
 function adoptar(){
   const v=CARGA.ver; if(v?.estado!=='ok') return;
+  S.inicio=true;
   if(v.id==='@ind2023'){ usarPlan('ind2023'); save(); cerrarCargar(); return; }
   const ya=Object.values(S.planes).find(p=>p.banco===v.id);
   const plan=ya||planDelBanco(v);
@@ -970,6 +986,41 @@ function renderIA(el){
     ${CARGA.error?`<div class="status bad">${esc(CARGA.error)}</div>`:''}`;
 }
 
+const LOGO=`<svg viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" fill="#0e8584"/><path d="M30 30 L50 50 L70 70" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none" stroke-opacity=".7"/><circle cx="30" cy="30" r="10" fill="#fff"/><circle cx="50" cy="50" r="10" fill="#fff"/><circle cx="70" cy="70" r="10" fill="none" stroke="#fff" stroke-width="5"/></svg>`;
+function renderBienvenida(){
+  const el=$('#panel-bienvenida'); if(el.dataset.ok) return; el.dataset.ok='1';
+  const f=S.perfil;
+  el.innerHTML=`
+    <div class="hero">${LOGO}<h2>Te damos la bienvenida a Cursable</h2><p>Marcá cómo vas en cada materia y mirá qué podés cursar el año que viene y qué finales te conviene rendir.</p></div>
+    <div class="feats"><div><b>✓</b>Qué podés cursar</div><div><b>⇄</b>Qué pasa si dejás una</div><div><b>★</b>Qué final rendir primero</div></div>
+    <label class="field" for="w-nombre">¿Cómo te llamás?<input id="w-nombre" class="inp" autocomplete="given-name" value="${esc(f.nombre)}" placeholder="Tu nombre"></label>
+    <label class="field" for="w-uni">¿En qué universidad estudiás?<input id="w-uni" class="inp" value="${esc(f.uni)}" placeholder="Ej: UTN Córdoba, UNC, UBA"></label>
+    <div class="meta3" style="grid-template-columns:1fr 1fr">
+      <label class="field" for="w-ciudad">Ciudad<input id="w-ciudad" class="inp" value="${esc(f.ciudad)}" placeholder="Ej: Córdoba"></label>
+      <label class="field" for="w-pais">País<input id="w-pais" class="inp" value="${esc(f.pais)}" placeholder="Ej: Argentina"></label>
+    </div>
+    <div id="w-err"></div>
+    <button type="button" class="btn primary" id="w-seguir">Buscar mi carrera</button>
+    <p class="hint" style="text-align:center">Tus datos y tu avance quedan solo en este celu.</p>
+    <details class="sec"><summary>¿Ya usabas Cursable en otro lado? Traé tu respaldo</summary>
+      <textarea id="w-backup" placeholder="Pegá acá el respaldo que copiaste" aria-label="Respaldo"></textarea>
+      <button type="button" class="btn" id="w-restore">Restaurar</button><span id="w-msg" class="muted small"></span></details>`;
+}
+function seguirBienvenida(){
+  const v=id=>$(id).value.trim();
+  S.perfil={nombre:v('#w-nombre'),uni:v('#w-uni'),ciudad:v('#w-ciudad'),pais:v('#w-pais')};
+  if(!S.perfil.nombre||!S.perfil.uni){ $('#w-err').innerHTML=`<div class="status bad">Contanos tu nombre y tu universidad para seguir.</div>`; $(!S.perfil.nombre?'#w-nombre':'#w-uni').focus(); return; }
+  save(); abrirCargar('nuevo'); CARGA.q=[S.perfil.uni,S.perfil.ciudad].filter(Boolean).join(' '); renderCargar();
+}
+function aplicarRespaldo(p){
+  if(p&&p.prog){ S=Object.assign(DEF(),p); S.cfg=Object.assign(DEF().cfg,p.cfg||{}); S.perfil=Object.assign(DEF().perfil,p.perfil||{}); }
+  else if(p&&typeof p.m==='object'){ S.prog.ind2023={m:p.m,sel:p.sel||[]}; } // respaldo de la versión anterior
+  else throw 0;
+  S.cfg.proyectar=false; S.inicio=true; usarPlan(S.planId); save();
+}
+// Desde la bienvenida, la búsqueda vuelve con lo que puso la persona
+function completarLugar(ed){ for(const k of ['uni','ciudad','pais']) if(!String(ed[k]||'').trim()) ed[k]=S.perfil[k]||''; return ed; }
+
 function abrirCargar(modo){
   OPEN=null; renderSheet();
   if(modo==='editar'){ ED=planAEd(PLAN); ED.compartir=false; CARGA={paso:'revisar',estado:null,error:null,archivos:[],q:''}; }
@@ -999,7 +1050,7 @@ function renderCargar(){
     const tieneIA=!!SAMPLE||!!LECTOR_URL;
     const pdfAbierto=CARGA.pdf||CARGA.archivos.length||CARGA.estado;
     el.innerHTML=`
-      <div class="sec-head" style="justify-content:space-between"><h2>Cargar una carrera</h2><button type="button" class="btn" id="c-cancel">Volver</button></div>
+      <div class="sec-head" style="justify-content:space-between"><h2>${S.inicio?'Cargar una carrera':`Hola${S.perfil.nombre?', '+esc(S.perfil.nombre):''}! Buscá tu carrera`}</h2><button type="button" class="btn" id="c-cancel">Volver</button></div>
       <label class="field" for="c-buscar">Buscá tu carrera<input id="c-buscar" class="inp" type="search" autocomplete="off" placeholder="Ej: Industrial UTN Córdoba" value="${esc(CARGA.q||'')}"></label>
       <div class="res" id="c-res"></div>
       <div class="lbl" style="margin-top:10px">¿No está tu carrera? Cargala vos</div>
@@ -1050,7 +1101,7 @@ function guardarEd(){
   const errs=validarEd();
   if(errs.length){ CARGA.errs=errs; renderCargar(); window.scrollTo(0,0); return; }
   const plan=edAPlan(), compartir=ED.compartir&&!!LECTOR_URL;
-  S.planes[plan.id]=plan; usarPlan(plan.id); save(); CARGA.errs=null;
+  S.planes[plan.id]=plan; S.inicio=true; usarPlan(plan.id); save(); CARGA.errs=null;
   if(compartir) compartirPlan(plan);
   cerrarCargar();
 }
@@ -1066,6 +1117,9 @@ document.addEventListener('click',e=>{
     const fb=()=>{ m.textContent='No pude copiar. Probá desde otro navegador.'; };
     try{ navigator.clipboard.writeText(txt).then(()=>{m.textContent='Copiado. Mandáselo a quien quieras: lo pega en “Cargar otra carrera”.';},fb);}catch(_){fb();} return; }
   if(t.id==='b-delplan'){ if(t.dataset.armed){ delete S.planes[S.planId]; delete S.prog[S.planId]; usarPlan('ind2023'); save(); OPEN=null; renderSheet(); renderAll(); } else { t.dataset.armed='1'; t.textContent='Tocá de nuevo para borrar'; } return; }
+  // bienvenida
+  if(t.id==='w-seguir'){ seguirBienvenida(); return; }
+  if(t.id==='w-restore'){ try{ aplicarRespaldo(JSON.parse($('#w-backup').value)); renderAll(); }catch(_){ $('#w-msg').textContent=' Ese texto no es un respaldo válido.'; } return; }
   // pantalla de carga
   if(t.id==='c-cancel'){ cerrarCargar(); return; }
   if(t.id==='c-leer'){ leerConClaude(); return; }
@@ -1080,11 +1134,11 @@ document.addEventListener('click',e=>{
   if(t.id==='c-copiar-ia'){ const txt=PROMPT_IA(), m=$('#ia-msg');
     const fb=()=>{ $('#ia-ver').open=true; const ta=$('#ia-prompt'); ta.focus(); ta.select(); m.textContent='Seleccioné el pedido: copialo.'; };
     try{ navigator.clipboard.writeText(txt).then(()=>{ m.textContent='Copiado ✓'; },fb); }catch(_){ fb(); } return; }
-  if(t.id==='c-ia-usar'){ try{ ED=parsePegado($('#c-ia-resp').value); CARGA.paso='revisar'; CARGA.error=null; window.scrollTo(0,0); }
+  if(t.id==='c-ia-usar'){ try{ ED=completarLugar(parsePegado($('#c-ia-resp').value)); CARGA.paso='revisar'; CARGA.error=null; window.scrollTo(0,0); }
     catch(_){ CARGA.error='No encontré un plan en ese texto. Copiá la respuesta completa de tu IA, desde la primera { hasta la última }.'; }
     renderCargar(); return; }
-  if(t.closest('#c-manual')){ ED={id:nuevoId(),nombre:$('#c-nombre')?.value.trim()||'',creditosReq:0,dudas:[],uni:'',ciudad:'',pais:'',compartir:!!LECTOR_URL,materias:[{id:'1',nombre:'',nivel:1,tipo:'anual',cuat:'',hs:0,creditos:0,reg:'',apr:''}]}; CARGA.paso='revisar'; renderCargar(); return; }
-  if(t.id==='c-import'){ try{ ED=parsePegado($('#c-paste').value); CARGA.paso='revisar'; CARGA.error=null; }
+  if(t.closest('#c-manual')){ ED={id:nuevoId(),nombre:$('#c-nombre')?.value.trim()||'',creditosReq:0,dudas:[],uni:'',ciudad:'',pais:'',compartir:!!LECTOR_URL,...completarLugar({}),materias:[{id:'1',nombre:'',nivel:1,tipo:'anual',cuat:'',hs:0,creditos:0,reg:'',apr:''}]}; CARGA.paso='revisar'; renderCargar(); return; }
+  if(t.id==='c-import'){ try{ ED=completarLugar(parsePegado($('#c-paste').value)); CARGA.paso='revisar'; CARGA.error=null; }
     catch(_){ CARGA.error='Ese texto no es un plan válido. Pegá exactamente lo que te copiaron.'; }
     renderCargar(); return; }
   if(t.id==='c-add'){ const last=ED.materias[ED.materias.length-1]; const n=ED.materias.reduce((a,m)=>Math.max(a,/^\d+$/.test(m.id)?+m.id:0),0)+1;
@@ -1105,7 +1159,7 @@ document.addEventListener('click',e=>{
     for(const p of ['plan','prox','armar','ysi','fin']) $('#panel-'+p).hidden = p!==tab.dataset.tab;
     window.scrollTo(0,0); try{localStorage.setItem(KEY+'-tab',tab.dataset.tab)}catch(_){} }
 });
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&OPEN) closeSheet(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&OPEN) closeSheet(); if(e.key==='Enter'&&e.target.closest?.('#panel-bienvenida')&&e.target.tagName==='INPUT') seguirBienvenida(); });
 document.addEventListener('input',e=>{
   const t=e.target;
   if(t.id==='c-buscar'){ CARGA.q=t.value; renderRes(); return; }
@@ -1135,11 +1189,7 @@ $('#b-copy').addEventListener('click',()=>{
   try{ navigator.clipboard.writeText(txt).then(()=>msg('Copiado.'),fb); }catch(_){ fb(); }
 });
 $('#b-restore').addEventListener('click',()=>{
-  try{ const p=JSON.parse($('#backup').value);
-    if(p&&p.prog){ S=Object.assign(DEF(),p); S.cfg=Object.assign(DEF().cfg,p.cfg||{}); }
-    else if(p&&typeof p.m==='object'){ S.prog.ind2023={m:p.m,sel:p.sel||[]}; } // respaldo de la versión anterior
-    else throw 0;
-    S.cfg.proyectar=false; usarPlan(S.planId); save(); renderAll(); msg('Restaurado.'); }
+  try{ aplicarRespaldo(JSON.parse($('#backup').value)); renderAll(); msg('Restaurado.'); }
   catch(_){ msg('Ese texto no es un respaldo válido.'); }
 });
 let armed=false;
