@@ -1,12 +1,16 @@
-// Cursable · lector de planes
-// Recibe el PDF (o fotos) de un régimen de correlativas y devuelve el plan como JSON,
-// leído por Claude. La clave de API vive solo acá, como secreto del Worker.
+// Cursable · servidor
+// 1) /leer: recibe el PDF (o fotos) de un régimen de correlativas y devuelve el plan como JSON,
+//    leído por Claude. La clave de API vive solo acá, como secreto del Worker.
+// 2) /planes: banco de planes compartidos por la gente (no usa Claude ni gasta saldo).
 import Anthropic from "@anthropic-ai/sdk";
+import { banco } from "./banco";
 
 export interface Env {
   ANTHROPIC_API_KEY: string;
   ALLOWED_ORIGINS: string; // separados por coma, ej: "https://juanpaz09.github.io"
-  LIMITER: RateLimit; // límite de pedidos por IP (wrangler.toml)
+  LIMITER: RateLimit; // límite de lecturas con Claude por IP (wrangler.toml)
+  LIMITER_BANCO: RateLimit; // límite para compartir y reportar planes
+  PLANES: KVNamespace; // banco de planes compartidos
 }
 
 const MAX_BYTES = 12 * 1024 * 1024; // tamaño máximo del pedido
@@ -66,12 +70,12 @@ function cors(origin: string | null, env: Env): Record<string, string> {
   const ok = origin && allowed.includes(origin);
   return {
     "Access-Control-Allow-Origin": ok ? origin : allowed[0] ?? "",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     "Vary": "Origin",
   };
 }
-const json = (body: unknown, status: number, headers: Record<string, string>) =>
+export const json = (body: unknown, status: number, headers: Record<string, string>) =>
   new Response(JSON.stringify(body), { status, headers: { ...headers, "Content-Type": "application/json; charset=utf-8" } });
 
 export default {
@@ -79,13 +83,16 @@ export default {
     const origin = req.headers.get("Origin");
     const h = cors(origin, env);
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: h });
-    if (req.method !== "POST" || new URL(req.url).pathname !== "/leer") return json({ error: "no_encontrado" }, 404, h);
+    const path = new URL(req.url).pathname;
+    const ip = req.headers.get("CF-Connecting-IP") ?? "sin-ip";
 
     // Solo desde la app (no es seguridad fuerte, pero frena el uso casual desde otros sitios)
     const allowed = env.ALLOWED_ORIGINS.split(",").map((s) => s.trim());
-    if (!origin || !allowed.includes(origin)) return json({ error: "origen_no_permitido" }, 403, h);
+    if (req.method === "POST" && (!origin || !allowed.includes(origin))) return json({ error: "origen_no_permitido" }, 403, h);
 
-    const ip = req.headers.get("CF-Connecting-IP") ?? "sin-ip";
+    if (path === "/planes" || path.startsWith("/planes/")) return banco(req, env, path, ip, h);
+    if (req.method !== "POST" || path !== "/leer") return json({ error: "no_encontrado" }, 404, h);
+
     const { success } = await env.LIMITER.limit({ key: ip });
     if (!success) return json({ error: "muchos_pedidos" }, 429, h);
 

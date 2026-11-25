@@ -129,6 +129,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 
 .panel{display:grid;gap:18px}
 .sec{display:grid;gap:8px}
+details.sec>summary{cursor:pointer;font-weight:600;padding:6px 0}
 .sec-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .badge{font-family:var(--f-display);font-weight:700;font-size:.85rem;border-radius:12px;padding:1px 9px}
 .badge.ok{background:var(--ok-soft);color:var(--ok)} .badge.fin{background:var(--t-regular);color:var(--c-regular)} .badge.gray{background:var(--line);color:var(--muted)}
@@ -227,6 +228,24 @@ body:not(.cargando) #panel-cargar{display:none!important}
 .dudas{background:var(--warn-soft);border:1px solid var(--warn);border-radius:12px;padding:10px 14px;font-size:.88rem}
 .dudas ul{margin:4px 0 0;padding-left:18px}
 .planlist{display:grid;gap:6px}
+.res{display:grid;gap:6px}
+.res-it{display:grid;gap:2px;text-align:left;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);width:100%;color:var(--fg)}
+.res-it b{font-size:.98rem}
+.res-it:hover,.big-opt:hover{border-color:var(--accent)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:.78rem;padding:3px 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-weight:600}
+.ver-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:10px}
+.ver-card h3{margin:0;font-family:var(--f-disp,inherit);font-size:1.15rem}
+.ver-m{display:grid;grid-template-columns:2.6rem minmax(0,1fr);gap:2px 8px;padding:7px 0;border-top:1px solid var(--line);align-items:start}
+.ver-m .c{font-family:var(--f-mono);font-size:.78rem;font-weight:700;color:var(--muted);padding-top:2px}
+.ver-m .mini{grid-column:2}
+.pasos{margin:0;padding-left:1.4rem;display:grid;gap:16px}
+.pasos li{padding-left:4px}
+.pasos li>b{display:block;margin-bottom:6px}
+.meta3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:.9rem;background:var(--accent-soft);border-radius:12px;padding:10px 12px}
+.check input{width:18px;height:18px;margin:1px 0 0;accent-color:var(--accent);flex:none}
+@media (max-width:480px){.meta3{grid-template-columns:1fr}}
 .planlist button.cur{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 @media (max-width:480px){.ed-l2{grid-template-columns:1fr 1fr}.ed-l3{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -344,6 +363,7 @@ const IND_CRED = 10;
 // Un plan: {id, nombre, fuente, creditosReq, materias:[{id, nombre, hs, nivel, reg, apr, tipo:'anual'|'cuatrimestral'|'electiva', cuat, creditos, nota}]}
 const PLAN_IND = {
   id:'ind2023', nombre:'Ingeniería Industrial · Plan 2023 (UTN FRC)', builtin:true, creditosReq:IND_CRED,
+  uni:'UTN · Facultad Regional Córdoba', ciudad:'Córdoba', pais:'Argentina',
   fuente:'Correlativas para cursar del Plan 2023 (actualizado 03/02/2025). Proyecto Final además pide la PPS.',
   materias:[
     ...ANUALES.map(([n,nombre,hs,reg,apr])=>({id:String(n),nombre,hs,nivel:NIVEL(n),reg:reg.map(String),apr:apr.map(String),tipo:'anual',creditos:0})),
@@ -628,7 +648,7 @@ function renderSheet(){
   if(OPEN==='@planes'){
     sh.innerHTML=`<div class="grip"></div>
       <div class="sheet-head"><h2 id="sheet-title">Tus carreras</h2><button type="button" class="close" id="sheet-close" aria-label="Cerrar">✕</button></div>
-      <div class="planlist">${planes().map(p=>`<button type="button" class="big-opt ${p.id===S.planId?'cur':''}" data-plan="${esc(p.id)}"><span class="ic">${p.id===S.planId?'✓':'🎓'}</span><b>${esc(p.nombre)}</b><span class="muted small">${p.materias.length} materias${S.prog[p.id]?` · ${Object.values(S.prog[p.id].m).filter(x=>x.e==='aprobada').length} aprobadas`:''}</span></button>`).join('')}</div>
+      <div class="planlist">${planes().map(p=>`<button type="button" class="big-opt ${p.id===S.planId?'cur':''}" data-plan="${esc(p.id)}"><span class="ic">${p.id===S.planId?'✓':'🎓'}</span><b>${esc(p.nombre)}</b><span class="muted small">${p.banco?'Del banco · ':''}${p.materias.length} materias${S.prog[p.id]?` · ${Object.values(S.prog[p.id].m).filter(x=>x.e==='aprobada').length} aprobadas`:''}</span></button>`).join('')}</div>
       <button type="button" class="btn primary" data-cargar="nuevo">+ Cargar otra carrera</button>
       <div class="controls">
         ${PLAN.builtin?'':`<button type="button" class="btn" data-cargar="editar">Editar este plan</button>`}
@@ -672,6 +692,7 @@ const LECTOR_URL=''; // servidor propio que lee el PDF (versión pública)
 const nuevoId = () => 'p'+Date.now().toString(36);
 function planAEd(p){
   return {id:p.id, nombre:p.nombre, creditosReq:p.creditosReq||0, dudas:p.dudas||[], fuente:p.fuente||'',
+    uni:p.uni||'', ciudad:p.ciudad||'', pais:p.pais||'', banco:p.banco||'', compartir:!!LECTOR_URL&&!p.banco&&!p.builtin,
     materias:p.materias.map(m=>({id:m.id, nombre:m.nombre, nivel:m.nivel||1, tipo:m.tipo||'anual', cuat:m.cuat||'', hs:m.hs||0, creditos:m.creditos||0, reg:m.reg.join(', '), apr:m.apr.join(', ')}))};
 }
 const splitCods = t => String(t||'').split(/[\s,;/+-]+/).map(x=>x.trim()).filter(Boolean);
@@ -688,11 +709,14 @@ function validarEd(){
     for(const f of ['reg','apr']) for(const c of splitCods(m[f])) if(!set.has(c)) errs.push({i,f,t:`${m.nombre||m.id}: la correlativa “${c}” no existe en el plan`});
   });
   if(!ED.nombre.trim()) errs.push({i:-1,f:'nombre',t:'Ponele un nombre a la carrera'});
+  if(ED.compartir&&LECTOR_URL) for(const [f,t] of [['uni','la universidad'],['ciudad','la ciudad'],['pais','el país']])
+    if(!String(ED[f]||'').trim()) errs.push({i:-1,f,t:`Para compartirlo en el banco falta ${t}`});
   if(!ED.materias.length) errs.push({i:-1,f:'',t:'El plan no tiene materias'});
   return errs;
 }
 function edAPlan(){
   return {id:ED.id, nombre:ED.nombre.trim(), creditosReq:+ED.creditosReq||0, fuente:ED.fuente||'Plan cargado por vos.',
+    uni:String(ED.uni||'').trim(), ciudad:String(ED.ciudad||'').trim(), pais:String(ED.pais||'').trim(), ...(ED.banco?{banco:ED.banco}:{}),
     materias:ED.materias.map(m=>({id:m.id.trim(), nombre:m.nombre.trim(), nivel:+m.nivel||1, tipo:m.tipo, cuat:m.tipo==='anual'?'':m.cuat, hs:+m.hs||0, creditos:m.tipo==='electiva'?(+m.creditos||0):0,
       reg:splitCods(m.reg), apr:splitCods(m.apr)}))};
 }
@@ -700,6 +724,7 @@ function edAPlan(){
 function jsonAEd(j, nombre){
   const ms=Array.isArray(j?.materias)?j.materias:[];
   return {id:nuevoId(), nombre:(nombre||j?.carrera||'').toString().slice(0,120), creditosReq:+j?.creditosElectivas||0,
+    uni:String(j?.universidad||j?.uni||''), ciudad:String(j?.ciudad||''), pais:String(j?.pais||''), compartir:!!LECTOR_URL,
     dudas:(Array.isArray(j?.dudas)?j.dudas:[]).map(String).slice(0,20), fuente:'Plan leído por Claude desde tu archivo y revisado por vos.',
     materias:ms.map((m,i)=>{ const t=String(m.tipo||'anual').toLowerCase();
       return {id:String(m.codigo??m.id??(i+1)).trim(), nombre:String(m.nombre||'').trim(), nivel:+m.anio||+m.nivel||1,
@@ -745,19 +770,31 @@ async function leerPdf(file, maxImgs){
   return {texto, imgs};
 }
 
-const PROMPT = (nombre, texto, conImgs) => `Te paso ${conImgs?'imágenes de':'el texto extraído de'} un plan de estudios / régimen de correlatividades de una carrera universitaria argentina${nombre?` (${nombre})`:''}. Armá el plan para una app que calcula qué materias puede cursar un estudiante.
-
-Respondé SOLO con un JSON con esta forma:
-{"carrera":"nombre de la carrera y plan","creditosElectivas":0,"materias":[{"codigo":"9","nombre":"Análisis Matemático II","anio":2,"horas":5,"tipo":"anual","cuatrimestre":null,"creditos":0,"regulares":["1","7"],"aprobadas":[]}],"dudas":["..."]}
-
-Reglas:
+const FORMA = `{"carrera":"nombre de la carrera y plan","universidad":"","ciudad":"","pais":"","creditosElectivas":0,"materias":[{"codigo":"9","nombre":"Análisis Matemático II","anio":2,"horas":5,"tipo":"anual","cuatrimestre":null,"creditos":0,"regulares":["1","7"],"aprobadas":[]}],"dudas":["..."]}`;
+const REGLAS = `Reglas:
+- Incluí TODAS las materias del plan, también las electivas.
 - "regulares": materias que hay que tener regularizadas (cursada aprobada) para CURSAR esta materia. "aprobadas": materias que hay que tener aprobadas (final) para CURSAR esta materia. Si el documento solo trae correlativas para rendir, usalas igual y avisalo en "dudas".
 - "codigo": el número o código de la materia en el documento. Si no tiene, inventá uno corto y único (por ejemplo E1, E2 para electivas) y usá esos mismos códigos en las correlativas.
 - Si una correlativa aparece por nombre, convertila al código de esa materia.
 - "tipo": "anual", "cuatrimestral" o "electiva". "cuatrimestre": "1C", "2C" o null. "anio": el año o nivel de la carrera (para electivas, el más cercano o null).
 - "horas": horas semanales si figuran, si no 0. "creditos": solo electivas, si figuran. "creditosElectivas": créditos de electivas que pide el título, si figura, si no 0.
-- No inventes correlativas. Si una celda está cortada o es ambigua, poné tu mejor lectura y explicala en "dudas" (frases cortas en castellano).
+- "universidad", "ciudad", "pais": si figuran en el documento; si no, dejalos vacíos.
+- No inventes correlativas. Si una celda está cortada o es ambigua, poné tu mejor lectura y explicala en "dudas" (frases cortas en castellano).`;
+const PROMPT = (nombre, texto, conImgs) => `Te paso ${conImgs?'imágenes de':'el texto extraído de'} un plan de estudios / régimen de correlatividades de una carrera universitaria${nombre?` (${nombre})`:''}. Armá el plan para una app que calcula qué materias puede cursar un estudiante.
+
+Respondé SOLO con un JSON con esta forma:
+${FORMA}
+
+${REGLAS}
 ${texto?`\nTexto del documento (las columnas están separadas por " | "):\n${texto.slice(0,150000)}`:''}`;
+// Para pegar en ChatGPT, Gemini, Claude u otra IA, junto con el PDF
+const PROMPT_IA = () => `Te adjunto el plan de estudios / régimen de correlatividades de mi carrera universitaria. Necesito pasarlo a un formato que lee la app Cursable, que calcula qué materias puedo cursar.
+
+Respondé SOLO con un bloque de código JSON con esta forma, sin texto antes ni después:
+${FORMA}
+
+${REGLAS}
+- Si el documento es largo, no lo resumas: necesito todas las materias con todas sus correlativas.`;
 
 async function leerConClaude(){
   const nombre=$('#c-nombre')?.value.trim()||'';
@@ -823,10 +860,120 @@ async function leerConServidor(nombre, files){
   CTL=null; renderCargar(); window.scrollTo(0,0);
 }
 
+function parsePegado(txt){
+  const s=String(txt||''), a=s.indexOf('{'), b=s.lastIndexOf('}');
+  if(a<0||b<a) throw 0;
+  const j=JSON.parse(s.slice(a,b+1)); const p=j.plan||j;
+  if(!Array.isArray(p.materias)||!p.materias.length) throw 0;
+  const m0=p.materias[0]||{};
+  if('codigo' in m0||'regulares' in m0||'anio' in m0){ const ed=jsonAEd(p,''); ed.fuente='Plan armado con tu IA y revisado por vos.'; return ed; }
+  const ed=planAEd({...p, id:nuevoId(), nombre:p.nombre||'', banco:'', builtin:false,
+    materias:p.materias.map(m=>({...m,id:String(m.id),reg:(m.reg||[]).map(String),apr:(m.apr||[]).map(String)}))});
+  ed.fuente=p.fuente||''; return ed;
+}
+
+// --- Banco de planes (versión pública): buscar, ver y compartir
+let BANCO=null; // {estado:'cargando'|'ok'|'error', planes:[{id,carrera,uni,ciudad,pais,n,f}]}
+const API = () => LECTOR_URL.replace(/\/$/,'');
+const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+const INCLUIDOS = () => [{id:'@ind2023', carrera:PLAN_IND.nombre, uni:PLAN_IND.uni, ciudad:PLAN_IND.ciudad, pais:PLAN_IND.pais, n:PLAN_IND.materias.length}];
+async function cargarBanco(){
+  if(!LECTOR_URL||BANCO?.estado==='ok'||BANCO?.estado==='cargando') return;
+  BANCO={estado:'cargando',planes:[]}; renderRes();
+  try{ const r=await fetch(API()+'/planes'); if(!r.ok) throw 0; const j=await r.json();
+    BANCO={estado:'ok',planes:(Array.isArray(j.planes)?j.planes:[]).filter(x=>x&&x.id&&x.carrera)}; }
+  catch(_){ BANCO={estado:'error',planes:[]}; }
+  renderRes();
+}
+function renderRes(){
+  const el=$('#c-res'); if(!el) return;
+  const toks=norm(CARGA.q).split(/\s+/).filter(Boolean);
+  const todos=[...INCLUIDOS(), ...(BANCO?.planes||[])];
+  const hits=toks.length ? todos.filter(x=>{ const h=norm([x.carrera,x.uni,x.ciudad,x.pais].join(' ')); return toks.every(t=>h.includes(t)); }) : todos;
+  const lista=hits.slice(0,toks.length?40:6);
+  el.innerHTML = lista.map(x=>`<button type="button" class="res-it" data-ver="${esc(x.id)}"><b>${esc(x.carrera)}</b><span class="muted small">${esc([x.uni,[x.ciudad,x.pais].filter(Boolean).join(', ')].filter(Boolean).join(' · '))} · ${+x.n||0} materias</span></button>`).join('')
+    + (BANCO?.estado==='cargando'?`<div class="status"><span class="spin"></span><span>Buscando en el banco…</span></div>`
+      : BANCO?.estado==='error'?`<p class="hint">No me pude conectar al banco de planes. Probá de nuevo más tarde.</p>`
+      : !LECTOR_URL?`<p class="hint">${toks.length&&!hits.length?'No la encontré. ':''}El banco con las carreras que comparte la gente está en la versión pública de Cursable.</p>`
+      : toks.length&&!hits.length?`<p class="hint">No encontré esa carrera en el banco. Cargala vos abajo y compartila para que la encuentren los que vienen.</p>`
+      : !toks.length&&hits.length>lista.length?`<p class="hint">Hay ${hits.length} carreras en el banco. Escribí para buscar la tuya.</p>`
+      : '');
+}
+async function verPlan(id){
+  CARGA.paso='ver'; CARGA.ver={id,estado:'cargando'}; CARGA.error=null; renderCargar(); window.scrollTo(0,0);
+  if(id==='@ind2023'){ CARGA.ver={id,estado:'ok',datos:{carrera:PLAN_IND.nombre,uni:PLAN_IND.uni,ciudad:PLAN_IND.ciudad,pais:PLAN_IND.pais,plan:PLAN_IND}}; renderCargar(); return; }
+  let v;
+  try{ const r=await fetch(API()+'/planes/'+encodeURIComponent(id)); if(!r.ok) throw 0; const j=await r.json();
+    if(!Array.isArray(j.plan?.materias)) throw 0; v={id,estado:'ok',datos:j}; }
+  catch(_){ v={id,estado:'error'}; }
+  if(CARGA.paso==='ver'&&CARGA.ver?.id===id){ CARGA.ver=v; renderCargar(); }
+}
+function planDelBanco(v){
+  const d=v.datos;
+  return {id:nuevoId(), nombre:d.plan.nombre||d.carrera, creditosReq:+d.plan.creditosReq||0, uni:d.uni||'', ciudad:d.ciudad||'', pais:d.pais||'', banco:v.id,
+    fuente:`Del banco de Cursable${d.f?`, compartido el ${d.f.split('-').reverse().join('/')}`:''}. Compará con el régimen oficial de tu facultad.`,
+    materias:d.plan.materias.map(m=>({...m, id:String(m.id), reg:(m.reg||[]).map(String), apr:(m.apr||[]).map(String)}))};
+}
+function adoptar(){
+  const v=CARGA.ver; if(v?.estado!=='ok') return;
+  if(v.id==='@ind2023'){ usarPlan('ind2023'); save(); cerrarCargar(); return; }
+  const ya=Object.values(S.planes).find(p=>p.banco===v.id);
+  const plan=ya||planDelBanco(v);
+  S.planes[plan.id]=plan; usarPlan(plan.id); save(); cerrarCargar();
+}
+async function compartirPlan(plan){
+  try{
+    const r=await fetch(API()+'/planes',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({carrera:plan.nombre, uni:plan.uni, ciudad:plan.ciudad, pais:plan.pais,
+        plan:{nombre:plan.nombre, creditosReq:plan.creditosReq, materias:plan.materias.map(({id,nombre,nivel,tipo,cuat,hs,creditos,reg,apr})=>({id,nombre,nivel,tipo,cuat,hs,creditos,reg,apr}))}})});
+    const j=await r.json().catch(()=>({}));
+    if(r.ok&&j.id&&S.planes[plan.id]){ S.planes[plan.id].banco=j.id; save(); BANCO=null; }
+  }catch(_){}
+}
+function renderVer(el){
+  const v=CARGA.ver, d=v.datos;
+  const head=`<div class="sec-head" style="justify-content:space-between"><h2>¿Es tu plan?</h2><button type="button" class="btn" id="c-volver">Volver</button></div>`;
+  if(v.estado==='cargando'){ el.innerHTML=head+`<div class="status"><span class="spin"></span><span>Abriendo el plan…</span></div>`; return; }
+  if(v.estado==='error'){ el.innerHTML=head+`<div class="status bad">No pude abrir ese plan. Probá de nuevo más tarde.</div>`; return; }
+  const ms=d.plan.materias;
+  const grupos={}; ms.forEach(m=>{ const k=m.tipo==='electiva'?'E':(+m.nivel||1); (grupos[k]||=[]).push(m); });
+  const claves=Object.keys(grupos).sort((a,b)=>a==='E'?1:b==='E'?-1:a-b);
+  const lugar=[d.ciudad,d.pais].filter(Boolean).join(', ');
+  el.innerHTML=head+`
+    <div class="ver-card">
+      <h3>${esc(d.carrera)}</h3>
+      <div class="chips">${d.uni?`<span class="chip">${esc(d.uni)}</span>`:''}${lugar?`<span class="chip">${esc(lugar)}</span>`:''}</div>
+      <div class="total-row">${claves.map(k=>`<span><b>${grupos[k].length}</b> <span class="muted">${k==='E'?'electivas':k+'.º año'}</span></span>`).join('')}</div>
+      <button type="button" class="btn primary" id="c-adoptar">Sí, es mi plan</button>
+      <button type="button" class="btn" id="c-volver">No es este</button>
+    </div>
+    <p class="hint">Mirá que las materias y las correlativas coincidan con tu plan. <span class="mini" style="display:inline-flex;vertical-align:middle"><span class="fin">7</span></span> = la pide regular · <span class="mini" style="display:inline-flex;vertical-align:middle"><span class="ok">7</span></span> = la pide aprobada.</p>
+    ${claves.map(k=>`<details class="sec" ${k==='1'?'open':''}><summary>${k==='E'?'Electivas':k+'.º año'} · ${grupos[k].length}</summary>
+      ${grupos[k].map(m=>`<div class="ver-m"><span class="c">${esc(m.id)}</span><span>${esc(m.nombre)}</span>${m.reg.length||m.apr.length?`<span class="mini">${m.reg.map(c=>`<span class="fin">${esc(c)}</span>`).join('')}${m.apr.map(c=>`<span class="ok">${esc(c)}</span>`).join('')}</span>`:''}</div>`).join('')}
+    </details>`).join('')}
+    ${v.id==='@ind2023'?'':`<div class="controls"><button type="button" class="btn" id="c-corregir">Es mi plan pero tiene errores: corregirlo</button>
+      ${v.reportado?`<span class="muted small">Gracias por avisar.</span>`:`<button type="button" class="btn" id="c-reportar">Avisar que está mal</button>`}</div>`}`;
+}
+function renderIA(el){
+  el.innerHTML=`
+    <div class="sec-head" style="justify-content:space-between"><h2>Usá tu propia IA</h2><button type="button" class="btn" id="c-volver">Volver</button></div>
+    <p class="hint">Tu IA (ChatGPT, Gemini, Claude o la que uses) arma el plan y Cursable solo lo lee. Después lo revisás antes de guardarlo.</p>
+    <ol class="pasos">
+      <li><b>Copiá este pedido</b>
+        <div class="controls"><button type="button" class="btn primary" id="c-copiar-ia">Copiar pedido</button><span id="ia-msg" class="muted small"></span></div>
+        <details class="sec" id="ia-ver"><summary>Ver el pedido</summary><textarea id="ia-prompt" readonly style="min-height:180px">${esc(PROMPT_IA())}</textarea></details></li>
+      <li><b>Abrí tu IA, pegá el pedido y adjuntá el PDF</b><span class="muted small">Si no tenés el PDF, sirven fotos o capturas del régimen de correlativas.</span></li>
+      <li><b>Copiá toda la respuesta y pegala acá</b>
+        <textarea id="c-ia-resp" placeholder='Empieza con { "carrera": …' aria-label="Respuesta de tu IA" style="min-height:120px"></textarea>
+        <button type="button" class="btn primary" id="c-ia-usar" style="margin-top:8px">Revisar el plan</button></li>
+    </ol>
+    ${CARGA.error?`<div class="status bad">${esc(CARGA.error)}</div>`:''}`;
+}
+
 function abrirCargar(modo){
   OPEN=null; renderSheet();
-  if(modo==='editar'){ ED=planAEd(PLAN); CARGA={paso:'revisar',estado:null,error:null,archivos:[]}; }
-  else { ED=null; CARGA={paso:'inicio',estado:null,error:null,archivos:[]}; }
+  if(modo==='editar'){ ED=planAEd(PLAN); ED.compartir=false; CARGA={paso:'revisar',estado:null,error:null,archivos:[],q:''}; }
+  else { ED=null; CARGA={paso:'inicio',estado:null,error:null,archivos:[],q:'',pdf:false}; }
   document.body.classList.add('cargando'); renderCargar(); window.scrollTo(0,0);
 }
 function cerrarCargar(){ CTL?.abort(); document.body.classList.remove('cargando'); ED=null; renderAll(); }
@@ -846,28 +993,34 @@ function edRow(m,i){
 
 function renderCargar(){
   const el=$('#panel-cargar');
+  if(CARGA.paso==='ver'){ renderVer(el); return; }
+  if(CARGA.paso==='ia'){ renderIA(el); return; }
   if(CARGA.paso==='inicio'){
     const tieneIA=!!SAMPLE||!!LECTOR_URL;
+    const pdfAbierto=CARGA.pdf||CARGA.archivos.length||CARGA.estado;
     el.innerHTML=`
       <div class="sec-head" style="justify-content:space-between"><h2>Cargar una carrera</h2><button type="button" class="btn" id="c-cancel">Volver</button></div>
-      <label class="field" for="c-nombre">¿Qué carrera es?<input id="c-nombre" class="inp" placeholder="Ej: Ingeniería Civil · Plan 2023 · UTN FRC" value="${esc($('#c-nombre')?.value||'')}"></label>
-      ${tieneIA?`
+      <label class="field" for="c-buscar">Buscá tu carrera<input id="c-buscar" class="inp" type="search" autocomplete="off" placeholder="Ej: Industrial UTN Córdoba" value="${esc(CARGA.q||'')}"></label>
+      <div class="res" id="c-res"></div>
+      <div class="lbl" style="margin-top:10px">¿No está tu carrera? Cargala vos</div>
+      ${tieneIA?`<button type="button" class="big-opt ${pdfAbierto?'on':''}" id="c-op-pdf"><span class="ic">⇪</span><b>Subir el PDF</b><span class="muted small">Cursable lo lee con IA y arma el plan.</span></button>
+      ${pdfAbierto?`<label class="field" for="c-nombre">¿Qué carrera es?<input id="c-nombre" class="inp" placeholder="Ej: Ingeniería Civil · Plan 2023 · UTN FRC" value="${esc($('#c-nombre')?.value||'')}"></label>
       <label class="drop" id="drop" for="c-file">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
-        <b>${CARGA.archivos.length?CARGA.archivos.map(f=>esc(f.name)).join(', '):'Subí el PDF o fotos del régimen de correlativas'}</b>
-        <span class="muted small">${CARGA.archivos.length?'Tocá para cambiarlo':'Claude lo lee y arma el plan. Después lo revisás.'}</span>
+        <b>${CARGA.archivos.length?CARGA.archivos.map(f=>esc(f.name)).join(', '):'Elegí el PDF o fotos del régimen de correlativas'}</b>
+        <span class="muted small">${CARGA.archivos.length?'Tocá para cambiarlo':'Después lo revisás antes de guardarlo.'}</span>
         <input type="file" id="c-file" accept="application/pdf,image/*" multiple hidden>
       </label>
       ${CARGA.estado?`<div class="status"><span class="spin"></span><span>${esc(CARGA.estado)}</span><button type="button" class="btn" id="c-stop" style="margin-left:auto">Parar</button></div>`
-        :`<button type="button" class="btn primary" id="c-leer" ${CARGA.archivos.length?'':'disabled'}>Leer con Claude</button>`}
-      <p class="hint">Usa tu cuenta de Claude: la primera vez te pide permiso.</p>`
-      :`<div class="empty">La lectura automática del PDF todavía no está disponible en esta versión. Podés cargar el plan a mano o pegar uno que te compartieron.</div>`}
+        :`<button type="button" class="btn primary" id="c-leer" ${CARGA.archivos.length?'':'disabled'}>Leer el plan</button>`}
+      ${SAMPLE?`<p class="hint">Usa tu cuenta de Claude: la primera vez te pide permiso.</p>`:''}`:''}`:''}
       ${CARGA.error?`<div class="status bad">${esc(CARGA.error)}</div>`:''}
-      <div class="lbl" style="margin-top:6px">Otras formas</div>
+      <button type="button" class="big-opt" id="c-op-ia"><span class="ic">✦</span><b>Usá tu propia IA</b><span class="muted small">Le pasás el PDF a ChatGPT, Gemini o Claude con un pedido que te damos, y pegás la respuesta.</span></button>
       <button type="button" class="big-opt" id="c-manual"><span class="ic">✎</span><b>Cargarla a mano</b><span class="muted small">Agregás cada materia con sus correlativas.</span></button>
       <details class="sec"><summary>Pegar un plan que te compartieron</summary>
         <textarea id="c-paste" placeholder="Pegá acá el plan copiado desde “Copiar plan para compartir”" aria-label="Plan compartido"></textarea>
         <button type="button" class="btn" id="c-import">Usar este plan</button></details>`;
+    renderRes(); cargarBanco();
     return;
   }
   // revisar / editar
@@ -882,6 +1035,9 @@ function renderCargar(){
     ${ED.dudas?.length?`<div class="dudas"><b>Fijate en esto:</b><ul>${ED.dudas.map(d=>`<li>${esc(d)}</li>`).join('')}</ul></div>`:''}
     ${errs.length?`<div class="status bad" style="display:block"><b>Hay ${errs.length} ${pl(errs.length,'cosa','cosas')} para corregir:</b><ul style="margin:4px 0 0;padding-left:18px;font-weight:400">${errs.slice(0,8).map(e=>`<li>${esc(e.t)}</li>`).join('')}</ul></div>`:''}
     <label class="field" for="ed-nombre">Nombre de la carrera<input id="ed-nombre" class="inp ${errs.some(e=>e.i===-1&&e.f==='nombre')?'err':''}" value="${esc(ED.nombre)}"></label>
+    <div class="meta3">${[['uni','Universidad','Ej: UTN · FR Córdoba'],['ciudad','Ciudad','Ej: Córdoba'],['pais','País','Ej: Argentina']].map(([f,t,ph])=>
+      `<label class="field" for="ed-${f}">${t}<input id="ed-${f}" class="inp ${errs.some(e=>e.i===-1&&e.f===f)?'err':''}" value="${esc(ED[f]||'')}" placeholder="${ph}"></label>`).join('')}</div>
+    ${LECTOR_URL?`<label class="check"><input type="checkbox" id="ed-compartir" ${ED.compartir?'checked':''}><span><b>Compartirlo en el banco</b><br><span class="muted small">Así los que estudian lo mismo lo encuentran sin cargarlo. Solo se comparte el plan, nunca tus notas ni tu avance.</span></span></label>`:''}
     <label class="field" for="ed-cred">Créditos de electivas que pide el título (0 si no aplica)<input id="ed-cred" class="inp" type="number" min="0" max="100" value="${esc(ED.creditosReq)}" style="max-width:8rem"></label>
     <p class="hint">Las correlativas van con los códigos de las materias, separados por coma.</p>
     <div class="ed" id="ed-list">${ED.materias.map(edRow).join('')}</div>
@@ -893,8 +1049,9 @@ function renderCargar(){
 function guardarEd(){
   const errs=validarEd();
   if(errs.length){ CARGA.errs=errs; renderCargar(); window.scrollTo(0,0); return; }
-  const plan=edAPlan();
+  const plan=edAPlan(), compartir=ED.compartir&&!!LECTOR_URL;
   S.planes[plan.id]=plan; usarPlan(plan.id); save(); CARGA.errs=null;
+  if(compartir) compartirPlan(plan);
   cerrarCargar();
 }
 
@@ -913,9 +1070,21 @@ document.addEventListener('click',e=>{
   if(t.id==='c-cancel'){ cerrarCargar(); return; }
   if(t.id==='c-leer'){ leerConClaude(); return; }
   if(t.id==='c-stop'){ CTL?.abort(); return; }
-  if(t.closest('#c-manual')){ ED={id:nuevoId(),nombre:$('#c-nombre')?.value.trim()||'',creditosReq:0,dudas:[],materias:[{id:'1',nombre:'',nivel:1,tipo:'anual',cuat:'',hs:0,creditos:0,reg:'',apr:''}]}; CARGA.paso='revisar'; renderCargar(); return; }
-  if(t.id==='c-import'){ try{ const j=JSON.parse($('#c-paste').value); const p=j.plan||j; if(!Array.isArray(p.materias)) throw 0;
-      ED=planAEd({...p, id:nuevoId(), materias:p.materias.map(m=>({...m,reg:m.reg||[],apr:m.apr||[]}))}); ED.fuente=p.fuente||''; CARGA.paso='revisar'; CARGA.error=null; }
+  const vr=t.closest('[data-ver]'); if(vr){ verPlan(vr.dataset.ver); return; }
+  if(t.id==='c-volver'){ CARGA.paso='inicio'; CARGA.error=null; renderCargar(); window.scrollTo(0,0); return; }
+  if(t.id==='c-adoptar'){ adoptar(); return; }
+  if(t.id==='c-corregir'&&CARGA.ver?.estado==='ok'){ ED=planAEd(planDelBanco(CARGA.ver)); ED.compartir=!!LECTOR_URL; ED.banco=''; CARGA.paso='revisar'; renderCargar(); window.scrollTo(0,0); return; }
+  if(t.id==='c-reportar'&&CARGA.ver){ const v=CARGA.ver; v.reportado=true; renderCargar(); fetch(API()+'/planes/'+encodeURIComponent(v.id)+'/reportar',{method:'POST'}).catch(()=>{}); return; }
+  if(t.closest('#c-op-pdf')){ CARGA.pdf=!CARGA.pdf; renderCargar(); return; }
+  if(t.closest('#c-op-ia')){ CARGA.paso='ia'; CARGA.error=null; renderCargar(); window.scrollTo(0,0); return; }
+  if(t.id==='c-copiar-ia'){ const txt=PROMPT_IA(), m=$('#ia-msg');
+    const fb=()=>{ $('#ia-ver').open=true; const ta=$('#ia-prompt'); ta.focus(); ta.select(); m.textContent='Seleccioné el pedido: copialo.'; };
+    try{ navigator.clipboard.writeText(txt).then(()=>{ m.textContent='Copiado ✓'; },fb); }catch(_){ fb(); } return; }
+  if(t.id==='c-ia-usar'){ try{ ED=parsePegado($('#c-ia-resp').value); CARGA.paso='revisar'; CARGA.error=null; window.scrollTo(0,0); }
+    catch(_){ CARGA.error='No encontré un plan en ese texto. Copiá la respuesta completa de tu IA, desde la primera { hasta la última }.'; }
+    renderCargar(); return; }
+  if(t.closest('#c-manual')){ ED={id:nuevoId(),nombre:$('#c-nombre')?.value.trim()||'',creditosReq:0,dudas:[],uni:'',ciudad:'',pais:'',compartir:!!LECTOR_URL,materias:[{id:'1',nombre:'',nivel:1,tipo:'anual',cuat:'',hs:0,creditos:0,reg:'',apr:''}]}; CARGA.paso='revisar'; renderCargar(); return; }
+  if(t.id==='c-import'){ try{ ED=parsePegado($('#c-paste').value); CARGA.paso='revisar'; CARGA.error=null; }
     catch(_){ CARGA.error='Ese texto no es un plan válido. Pegá exactamente lo que te copiaron.'; }
     renderCargar(); return; }
   if(t.id==='c-add'){ const last=ED.materias[ED.materias.length-1]; const n=ED.materias.reduce((a,m)=>Math.max(a,/^\d+$/.test(m.id)?+m.id:0),0)+1;
@@ -939,13 +1108,16 @@ document.addEventListener('click',e=>{
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&OPEN) closeSheet(); });
 document.addEventListener('input',e=>{
   const t=e.target;
+  if(t.id==='c-buscar'){ CARGA.q=t.value; renderRes(); return; }
   if(t.id==='ed-nombre'&&ED) ED.nombre=t.value;
+  else if(/^ed-(uni|ciudad|pais)$/.test(t.id)&&ED){ ED[t.id.slice(3)]=t.value; t.classList.remove('err'); }
   else if(t.id==='ed-cred'&&ED) ED.creditosReq=t.value;
   else if(t.dataset.f&&ED){ const row=t.closest('.ed-row'); if(row){ ED.materias[+row.dataset.i][t.dataset.f]=t.value; t.classList.remove('err'); } }
 });
 document.addEventListener('change',e=>{
   const t=e.target;
   if(t.dataset.f==='tipo'&&ED){ const i=+t.closest('.ed-row').dataset.i; ED.materias[i].tipo=t.value; if(t.value==='cuatrimestral'&&!ED.materias[i].cuat) ED.materias[i].cuat='1C'; t.closest('.ed-row').outerHTML=edRow(ED.materias[i],i); return; }
+  if(t.id==='ed-compartir'&&ED){ ED.compartir=t.checked; return; }
   if(t.id==='c-file'){ CARGA.archivos=[...t.files]; CARGA.error=null; renderCargar(); return; }
   if(t.id==='vence'&&OPEN){ rec(OPEN).vence=t.value; save(); renderAll(); renderSheet(); }
   else if(t.id==='nota'&&OPEN){ rec(OPEN).nota=t.value; save(); }

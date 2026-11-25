@@ -14,3 +14,13 @@ simple = { limit = 3, period = 60 }
 
 # La clave se carga aparte, nunca acá:  npx wrangler secret put ANTHROPIC_API_KEY
 # (o en el panel de Cloudflare: Settings → Variables and Secrets)
+
+# Hasta 10 planes compartidos o avisos por minuto por persona.
+[[ratelimits]]
+name = "LIMITER_BANCO"
+namespace_id = "1002"
+simple = { limit = 10, period = 60 }
+
+# Banco de planes. Cloudflare crea el espacio solo la primera vez que publica (sin id).
+[[kv_namespaces]]
+binding = "PLANES"
